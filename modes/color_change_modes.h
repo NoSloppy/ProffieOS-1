@@ -68,6 +68,11 @@ struct ColorChangeMode : public ModeInterface {
     } else {
 #ifdef COLOR_CHANGE_DIRECT
       PVLOG_NORMAL << "Color change, TICK+\n";
+      if (&SFX_ccchange) {
+        hybrid_font.PlayCommon(&SFX_ccchange);
+      } else {
+        beeper.Beep(0.05, 2000.0);
+      }
       SaberBase::UpdateVariation(1);
 #else	
       pushMode<typename SPEC::SteppedVariationMode>();
