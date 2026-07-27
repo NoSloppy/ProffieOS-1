@@ -4,6 +4,7 @@
 #ifdef ENABLE_AUDIO
 
 #include "sound_queue.h"
+#include "../common/delay_timer.h"
 
 // Sound library
 EFFECT(mnum); // menu numbers
@@ -103,6 +104,23 @@ private:
 };
 
 #define SOUNDQ (getPtr<SoundQueueSingleton>())
+
+// PlayErrorMessage is declared in sound.h (before hybrid_font.h) but defined
+// here where SOUNDQ and SoundToPlayErrorFile are both available.
+inline bool PlayErrorMessage(const char* filename) {
+  if (!SOUNDQ->Play(SoundToPlayErrorFile(filename))) return false;
+  // SOUNDQ is asynchronous — the wav header isn't parsed until Loop() fires.
+  // Set a non-zero sentinel now so the guards in errors.h
+  // ("if (SaberBase::sound_length > 0) return;") fire immediately and
+  // suppress the Talkie fallback.
+  if (SaberBase::sound_length == 0.0f) SaberBase::sound_length = 0.001f;
+  // Append 3 s to the delay timer so that hybrid_font.h defers boot/font
+  // sounds until the error wav finishes.  Multiple back-to-back errors
+  // stack their estimates (AppendToDelayTimer adds on top of any existing
+  // deadline rather than resetting it).
+  AppendToDelayTimer(SaberBase::sound_length * 1000);
+  return true;
+}
 
 class SoundLibrary  {
 public:
