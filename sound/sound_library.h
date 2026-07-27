@@ -109,6 +109,27 @@ private:
 // PlayErrorMessage is declared in sound.h (before hybrid_font.h) but defined
 // here where SOUNDQ and SoundToPlayErrorFile are both available.
 inline bool PlayErrorMessage(const char* filename) {
+  // Pre-check: verify the file exists in the current font directory or in the
+  // root-level "errors/" folder on the SD card before queuing playback.
+  // This mirrors the legacy synchronous behaviour: if the file is not found
+  // anywhere we return false so the talkie/beeper fallback in errors.h runs.
+  // (LOCK_SD is a no-op in this codebase, so the check is safe to call from
+  // any context including Effect::ScanCurrentDirectory.)
+  bool found = false;
+  for (const char* dir = current_directory; dir; dir = next_current_directory(dir)) {
+    PathHelper full_name(dir, filename);
+    if (LSFS::Exists(full_name)) { found = true; break; }
+  }
+  if (!found) {
+    // Fall back to the global root-level "errors/" folder.
+    PathHelper err_path("errors", filename);
+    found = LSFS::Exists(err_path);
+  }
+  if (!found) return false;
+  // File confirmed to exist; enqueue async playback.
+  // SoundToPlayErrorFile repeats the same two-location search when the queue
+  // drains so that the correct file is played even if current_directory
+  // changes between now and when Loop() fires.
   if (!SOUNDQ->Play(SoundToPlayErrorFile(filename))) return false;
   // SOUNDQ is asynchronous — the wav header isn't parsed until Loop() fires.
   // Set a non-zero sentinel now so the guards in errors.h
