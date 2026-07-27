@@ -45,6 +45,20 @@ private:
   Effect::FileID file_id_;
 };
 
+// Like SoundToPlayInCurrentDir but also searches the "errors/" directory
+// as a fallback.  Used by PlayErrorMessage() so that error wavs stored in
+// the global "errors/" folder work regardless of the current font dir.
+class SoundToPlayErrorFile : public SoundToPlayBase {
+public:
+  SoundToPlayErrorFile(const char* filename) : filename_(filename) {}
+  bool Play(BufferedWavPlayer* player) override {
+    return player->PlayInCurrentDir(filename_) ||
+           player->PlayInDir("errors", filename_);
+  }
+private:
+  const char* filename_;
+};
+
 class SoundToPlayColor : public SoundToPlayBase {
 public:
   SoundToPlayColor(unsigned char r,

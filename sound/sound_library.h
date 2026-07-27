@@ -104,6 +104,18 @@ private:
 
 #define SOUNDQ (getPtr<SoundQueueSingleton>())
 
+// PlayErrorMessage is declared in sound.h (before hybrid_font.h) but defined
+// here where SOUNDQ and SoundToPlayErrorFile are both available.
+inline bool PlayErrorMessage(const char* filename) {
+  if (!SOUNDQ->Play(SoundToPlayErrorFile(filename))) return false;
+  // SOUNDQ is asynchronous — the wav header isn't parsed until Loop() fires.
+  // Set a non-zero sentinel now so the guards in errors.h
+  // ("if (SaberBase::sound_length > 0) return;") fire immediately and
+  // suppress the Talkie fallback.
+  if (SaberBase::sound_length == 0.0f) SaberBase::sound_length = 0.001f;
+  return true;
+}
+
 class SoundLibrary  {
 public:
   static const int SoundLibraryVersion = 1;
