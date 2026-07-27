@@ -114,11 +114,13 @@ inline bool PlayErrorMessage(const char* filename) {
   // ("if (SaberBase::sound_length > 0) return;") fire immediately and
   // suppress the Talkie fallback.
   if (SaberBase::sound_length == 0.0f) SaberBase::sound_length = 0.001f;
-  // Append 3 s to the delay timer so that hybrid_font.h defers boot/font
-  // sounds until the error wav finishes.  Multiple back-to-back errors
-  // stack their estimates (AppendToDelayTimer adds on top of any existing
-  // deadline rather than resetting it).
-  AppendToDelayTimer(3000);
+  // Set a short sentinel on the delay timer so that the pending_boot_ /
+  // pending_newfont_ guards in hybrid_font.h Loop() are activated.
+  // The real gating is done by checking !SOUNDQ->busy() in Loop(), which
+  // stays true for the full duration of all queued error wavs.  Multiple
+  // back-to-back errors are handled automatically: SOUNDQ stays busy until
+  // the last one finishes.
+  AppendToDelayTimer(200);
   return true;
 }
 
