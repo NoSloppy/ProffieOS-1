@@ -28,13 +28,4 @@ inline bool DelayTimerActive() {
   return millis() < delay_until_ms();
 }
 
-// Flag set by PlayErrorMessage() when an error wav is queued, cleared by
-// SoundQueueSingleton::Loop() when the queue drains.  Allows hybrid_font.h
-// to defer boot/font sounds until the error wav actually finishes playing
-// without depending on SoundQueueSingleton (defined later in the build).
-inline bool& error_sound_active() {
-  static bool s = false;
-  return s;
-}
-
 #endif  // DELAY_TIMER_H
