@@ -54,7 +54,7 @@ void ProffieOSErrors::font_directory_not_found() {
   talkie.Say(talkie_font_directory_15, 15);
   talkie.Say(talkie_not_found_15, 15);
   // DodgeSound(2000);
-  StartDelayTimer(2000);
+  AppendToDelayTimer(2000);
 #else
   beeper.Beep(0.5,   261.63 * 2); // C5 - Font
   beeper.Beep(0.5/3, 246.94 * 2); // B4 - di
@@ -64,7 +64,7 @@ void ProffieOSErrors::font_directory_not_found() {
   beeper.Beep(0.5,   146.83 * 2); // D4 - not
   beeper.Beep(0.5,   130.81 * 2); // C4 - found
   // DodgeSound(2530);
-  StartDelayTimer(2530);
+  AppendToDelayTimer(2530);
 #endif
 #endif
 }
@@ -79,14 +79,14 @@ void ProffieOSErrors::voice_pack_not_found() {
   talkie.Say(talkie_voice_pack_15, 25);
   talkie.Say(talkie_not_found_15, 15);
   // DodgeSound(2000);
-  StartDelayTimer(2000);
+  AppendToDelayTimer(2000);
 #else
   beeper.Beep(1.0, 220.00 * 2); // A4 - Voice
   beeper.Beep(0.5, 130.81 * 2); // C4 - pack
   beeper.Beep(0.5, 146.83 * 2); // D4 - not
   beeper.Beep(1.0, 130.81 * 2); // C4 - found
   // DodgeSound(3000);
-  StartDelayTimer(3000);
+  AppendToDelayTimer(3000);
 #endif
 #endif
 }
@@ -101,7 +101,7 @@ void ProffieOSErrors::error_in_blade_array() {
   talkie.Say(talkie_error_in_15, 15);
   talkie.Say(talkie_blade_array_15, 15);
   // DodgeSound(2000);
-  StartDelayTimer(2000);
+  AppendToDelayTimer(2000);
 #else
   beeper.Beep(0.25, 174.61 * 2); // F4 - Err
   beeper.Beep(0.25, 196.00 * 2); // G4 - or
@@ -112,7 +112,7 @@ void ProffieOSErrors::error_in_blade_array() {
   beeper.Beep(0.5,  146.83 * 2); // D4 - ar
   beeper.Beep(1.0,  130.81 * 2); // C4 - ray
   // DodgeSound(3000);
-  StartDelayTimer(3000);
+  AppendToDelayTimer(3000);
 #endif
 #endif
 }
@@ -127,7 +127,7 @@ void ProffieOSErrors::error_in_font_directory() {
   talkie.Say(talkie_error_in_15, 15);
   talkie.Say(talkie_font_directory_15, 15);
   // DodgeSound(1300);
-  StartDelayTimer(1300);
+  AppendToDelayTimer(1300);
 #else
   beeper.Beep(0.25, 174.61 * 2); // F4 - Err
   beeper.Beep(0.25, 196.00 * 2); // G4 - or
@@ -139,7 +139,7 @@ void ProffieOSErrors::error_in_font_directory() {
   beeper.Beep(0.5,  246.94 * 2); // B4 - tor
   beeper.Beep(0.5,  261.63 * 2); // C5 - y
   // DodgeSound(3500);
-  StartDelayTimer(3500);
+  AppendToDelayTimer(3500);
 #endif
 #endif
 }
@@ -155,7 +155,7 @@ void ProffieOSErrors::error_in_voice_pack_version() {
   talkie.Say(talkie_voice_pack_15, 15);
   talkie.Say(talkie_version_15, 15);
   // DodgeSound(1500);
-  StartDelayTimer(1500);
+  AppendToDelayTimer(1500);
 #else
   beeper.Beep(0.25, 174.61 * 2); // F4 - Err
   beeper.Beep(0.25, 196.00 * 2); // G4 - or
@@ -166,7 +166,7 @@ void ProffieOSErrors::error_in_voice_pack_version() {
   beeper.Beep(1.0,  196.00 * 2); // G4 - ver
   beeper.Beep(0.5,  130.81 * 2); // C4 - sion
   // DodgeSound(3500);
-  StartDelayTimer(3500);
+  AppendToDelayTimer(3500);
 #endif
 #endif
 }
