@@ -180,6 +180,7 @@ void SaySDCheckError(int error) {
 }
 
 #include "../common/config_file.h"
+#include "sound_library.h"
 #include "hybrid_font.h"
 
 HybridFont hybrid_font;
