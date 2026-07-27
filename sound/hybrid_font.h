@@ -900,7 +900,7 @@ public:
         SaberBase::DoEffect(EFFECT_POSTOFF, saved_location_);
       }
     }
-    if (!DelayTimerActive() && !SOUNDQ->busy()) {
+    if (!DelayTimerActive() && !error_sound_active()) {
       if (pending_boot_) {
         pending_boot_ = false;
         if (!PlayPolyphonic(&SFX_boot)) {

@@ -59,6 +59,7 @@ public:
   const char* name() { return "SoundQueue"; }
   void Loop() override {
     PollSoundQueue(wav_player_);
+    if (!busy()) error_sound_active() = false;
   }
 
   void require_version(int version) {
@@ -114,12 +115,12 @@ inline bool PlayErrorMessage(const char* filename) {
   // ("if (SaberBase::sound_length > 0) return;") fire immediately and
   // suppress the Talkie fallback.
   if (SaberBase::sound_length == 0.0f) SaberBase::sound_length = 0.001f;
-  // Set a short sentinel on the delay timer so that the pending_boot_ /
-  // pending_newfont_ guards in hybrid_font.h Loop() are activated.
-  // The real gating is done by checking !SOUNDQ->busy() in Loop(), which
-  // stays true for the full duration of all queued error wavs.  Multiple
-  // back-to-back errors are handled automatically: SOUNDQ stays busy until
-  // the last one finishes.
+  // Signal that an error wav is playing.  hybrid_font.h Loop() checks
+  // error_sound_active() to defer boot/font sounds until the queue drains.
+  // SoundQueueSingleton::Loop() clears this flag when busy() goes false.
+  error_sound_active() = true;
+  // Short sentinel so that the pending_boot_ / pending_newfont_ bools are
+  // set before Loop() first evaluates !DelayTimerActive().
   AppendToDelayTimer(200);
   return true;
 }
