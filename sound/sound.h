@@ -132,7 +132,6 @@ void DodgeSound(uint32_t millis) {
   undodge.start(millis);
 }
 
-bool PlayErrorMessage(const char* filename);
 // bool PlayErrorMessage(const char* filename) {
 //   RefPtr<BufferedWavPlayer> ret = GetFreeWavPlayer();
 //   if (!ret) return false;
@@ -146,6 +145,9 @@ bool PlayErrorMessage(const char* filename);
 //   ret->UpdateSaberBaseSoundInfo();
 //   return true;
 // }
+
+// Defined in sound_library.h after SoundQueueSingleton and SOUNDQ are available.
+bool PlayErrorMessage(const char* filename);
 
 size_t WhatUnit(class BufferedWavPlayer* player) {
   if (!player) return -1;

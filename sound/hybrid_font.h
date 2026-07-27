@@ -902,7 +902,7 @@ public:
     }
 // \/\/\/\/ this is BC only because I think this is how it should work
       // Delay boot.wav for error talkie/beeps to finish..
-    if (!DelayTimerActive()) {
+    if (!DelayTimerActive() && !error_sound_active()) {
       if (pending_boot_) {
         pending_boot_ = false;
         if (!PlayPolyphonic(&SFX_boot)) {
