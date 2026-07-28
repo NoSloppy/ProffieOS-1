@@ -9,7 +9,6 @@ void DodgeSound(uint32_t millis);
 #else
 #define DodgeSound(X) X
 #endif
-#include "delay_timer.h"
 
 class ProffieOSErrors {
 public:
