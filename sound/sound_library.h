@@ -67,15 +67,15 @@ public:
     if (busy() && wav_player_) {
       float pos = wav_player_->pos();
       float len = wav_player_->length();
-      // pos() can return a small negative value when the wav file has been fully
-      // read but the audio buffer is still draining (playwav::pos() returns 0.0
-      // once isPlaying() is false, making buffered_wav_player::pos() go negative
-      // by ~buffer_duration).  Without this guard, remaining = len - (-buf) > len,
-      // which pushes the deadline ~len+0.5 s into the future and causes a 2–3 s
-      // extra wait after the error sound finishes.  Clamp pos to 0 so that
-      // remaining is treated as ≈ 0 in that end-of-file drain phase.
-      if (pos < 0.0f) pos = 0.0f;
-      float remaining = len - pos;
+      // pos() goes negative when the wav file has been fully decoded but the
+      // audio buffer is still draining: wav.pos() returns 0.0 once the decoder
+      // is done while buffered()/AUDIO_RATE is still > 0, so pos() = -drain_time.
+      // The correct remaining time in that phase is -pos (the actual drain, ≈ 6 ms).
+      // The previous code clamped pos to 0, which made remaining = len - 0 = len
+      // (the full wav duration) and pushed the timer ~len+500 ms into the future
+      // on every Loop tick during the 6 ms drain window — producing the 2–3 s
+      // silence gap observed between the error sound and the boot/font wav.
+      float remaining = (pos < 0.0f) ? -pos : (len - pos);
       if (remaining < 0.0f) remaining = 0.0f;
       uint32_t needed_until = millis() + (uint32_t)(remaining * 1000) + 500;
       if (needed_until > delay_until_ms()) {
@@ -158,7 +158,7 @@ inline bool PlayErrorMessage(const char* filename) {
                << (in_font ? "font" : "errors/") << " folder: " << filename << "\n";
 
   // File confirmed.  Queue for sequential async playback.
-  if (!SOUNDQ->Play(SoundToPlayErrorFile(filename))) return false;
+  if (!SOUNDQ->Play(SoundToPlayErrorFile(filename, in_font))) return false;
 
   // Sentinel: the queue hasn't started playing yet so sound_length is still 0.
   // Set a non-zero value now so errors.h suppresses the talkie immediately.
