@@ -59,9 +59,19 @@ public:
   const char* name() { return "SoundQueue"; }
   void Loop() override {
     PollSoundQueue(wav_player_);
-    // While an error WAV is queued or playing, keep extending the delay timer so
-    // hybrid_font.h defers boot/newfont sounds until the queue fully drains.
-    if (busy()) AppendToDelayTimer(100);
+    // While an error WAV is playing, keep the delay timer just ahead of the
+    // sound's end so hybrid_font.h defers boot/newfont until the queue drains.
+    // We track remaining playback time instead of appending a fixed value on
+    // every tick: the fixed approach grows the deadline far into the future
+    // (100 ms × loop-rate ms/s) and prevents boot/font sounds from ever firing.
+    if (busy() && wav_player_) {
+      float remaining = wav_player_->length() - wav_player_->pos();
+      if (remaining < 0.0f) remaining = 0.0f;
+      uint32_t needed_until = millis() + (uint32_t)(remaining * 1000) + 500;
+      if (needed_until > delay_until_ms()) {
+        delay_until_ms() = needed_until;
+      }
+    }
   }
 
   void require_version(int version) {
@@ -137,9 +147,13 @@ inline bool PlayErrorMessage(const char* filename) {
   // Set a non-zero value now so errors.h suppresses the talkie immediately.
   if (SaberBase::sound_length < 0.001f) SaberBase::sound_length = 0.001f;
 
-  // Short initial hold — ensures hybrid_font.h sees DelayTimerActive() on the very
-  // next Loop() check.  SoundQueueSingleton::Loop() extends this as long as busy().
-  AppendToDelayTimer(200);
+  // Initial hold — keeps hybrid_font.h's DelayTimerActive() check true until the
+  // first Loop() tick, when SoundQueueSingleton::Loop() takes over and sets the
+  // deadline to millis() + remaining_playback + 500 ms.  Use 500 ms (not 200 ms)
+  // to cover Activate2() config.ini reads and EFFECT_CHDIR observer calls, which
+  // can take >200 ms on slow SD cards and would otherwise let DoBoot/DoNewFont
+  // slip past the guard and start simultaneously with the queued error sound.
+  AppendToDelayTimer(500);
   return true;
 }
 
