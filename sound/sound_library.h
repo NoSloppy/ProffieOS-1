@@ -65,7 +65,17 @@ public:
     // every tick: the fixed approach grows the deadline far into the future
     // (100 ms × loop-rate ms/s) and prevents boot/font sounds from ever firing.
     if (busy() && wav_player_) {
-      float remaining = wav_player_->length() - wav_player_->pos();
+      float pos = wav_player_->pos();
+      float len = wav_player_->length();
+      // pos() can return a small negative value when the wav file has been fully
+      // read but the audio buffer is still draining (playwav::pos() returns 0.0
+      // once isPlaying() is false, making buffered_wav_player::pos() go negative
+      // by ~buffer_duration).  Without this guard, remaining = len - (-buf) > len,
+      // which pushes the deadline ~len+0.5 s into the future and causes a 2–3 s
+      // extra wait after the error sound finishes.  Clamp pos to 0 so that
+      // remaining is treated as ≈ 0 in that end-of-file drain phase.
+      if (pos < 0.0f) pos = 0.0f;
+      float remaining = len - pos;
       if (remaining < 0.0f) remaining = 0.0f;
       uint32_t needed_until = millis() + (uint32_t)(remaining * 1000) + 500;
       if (needed_until > delay_until_ms()) {
@@ -130,15 +140,22 @@ inline bool PlayErrorMessage(const char* filename) {
   // This must be done before queuing so we only suppress the talkie when we know a WAV
   // will actually play.  (SoundToPlayErrorFile repeats the same search at play time.)
   bool found = false;
+  bool in_font = false;
   for (const char* dir = current_directory; dir; dir = next_current_directory(dir)) {
     PathHelper full_name(dir, filename);
-    if (LSFS::Exists(full_name)) { found = true; break; }
+    if (LSFS::Exists(full_name)) { found = true; in_font = true; break; }
   }
   if (!found) {
     PathHelper err_path("errors", filename);
     found = LSFS::Exists(err_path);
   }
-  if (!found) return false;  // No WAV found — let talkie/beeper handle it
+  if (!found) {
+    PVLOG_NORMAL << "*** Error wav not found: " << filename
+                 << " — falling through to talkie/beeper\n";
+    return false;  // No WAV found — let talkie/beeper handle it
+  }
+  PVLOG_NORMAL << "*** Error wav found in "
+               << (in_font ? "font" : "errors/") << " folder: " << filename << "\n";
 
   // File confirmed.  Queue for sequential async playback.
   if (!SOUNDQ->Play(SoundToPlayErrorFile(filename))) return false;
