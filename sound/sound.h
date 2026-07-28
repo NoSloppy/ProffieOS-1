@@ -132,18 +132,8 @@ void DodgeSound(uint32_t millis) {
   undodge.start(millis);
 }
 
-bool PlayErrorMessage(const char* filename) {
-  RefPtr<BufferedWavPlayer> ret = GetFreeWavPlayer();
-  if (!ret) return false;
-  if (!ret->PlayInCurrentDir(filename) &&
-      !ret->PlayInDir("errors", filename)) {
-    return false;
-  }
-  ret->UpdateSaberBaseSoundInfo();
-  AppendToDelayTimer(ret->length() * 1000 + 200);  // +200ms tail buffer before boot/font sounds resume
-  ret->set_dodge(false);
-  return true;
-}
+// Defined in sound_library.h after SoundQueueSingleton and SOUNDQ are available.
+bool PlayErrorMessage(const char* filename);
 
 size_t WhatUnit(class BufferedWavPlayer* player) {
   if (!player) return -1;

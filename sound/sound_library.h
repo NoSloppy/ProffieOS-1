@@ -59,6 +59,9 @@ public:
   const char* name() { return "SoundQueue"; }
   void Loop() override {
     PollSoundQueue(wav_player_);
+    // While an error WAV is queued or playing, keep extending the delay timer so
+    // hybrid_font.h defers boot/newfont sounds until the queue fully drains.
+    if (busy()) AppendToDelayTimer(100);
   }
 
   void require_version(int version) {
@@ -104,6 +107,41 @@ private:
 };
 
 #define SOUNDQ (getPtr<SoundQueueSingleton>())
+
+// Play an error WAV from the current font directory, falling back to the root-level
+// "errors/" folder on the SD card.  Returns false when the file cannot be found so
+// that errors.h falls through to the talkie/beeper.  When the file IS found the sound
+// is queued via SoundQueueSingleton (sequential, not simultaneous) and a sentinel is
+// set on SaberBase::sound_length so the "if (sound_length > 0) return;" guard in
+// errors.h fires immediately, suppressing the talkie even before the queue drains and
+// the WAV header is parsed.
+inline bool PlayErrorMessage(const char* filename) {
+  // Pre-check: confirm the file exists in a font directory or the root "errors/" folder.
+  // This must be done before queuing so we only suppress the talkie when we know a WAV
+  // will actually play.  (SoundToPlayErrorFile repeats the same search at play time.)
+  bool found = false;
+  for (const char* dir = current_directory; dir; dir = next_current_directory(dir)) {
+    PathHelper full_name(dir, filename);
+    if (LSFS::Exists(full_name)) { found = true; break; }
+  }
+  if (!found) {
+    PathHelper err_path("errors", filename);
+    found = LSFS::Exists(err_path);
+  }
+  if (!found) return false;  // No WAV found — let talkie/beeper handle it
+
+  // File confirmed.  Queue for sequential async playback.
+  if (!SOUNDQ->Play(SoundToPlayErrorFile(filename))) return false;
+
+  // Sentinel: the queue hasn't started playing yet so sound_length is still 0.
+  // Set a non-zero value now so errors.h suppresses the talkie immediately.
+  if (SaberBase::sound_length < 0.001f) SaberBase::sound_length = 0.001f;
+
+  // Short initial hold — ensures hybrid_font.h sees DelayTimerActive() on the very
+  // next Loop() check.  SoundQueueSingleton::Loop() extends this as long as busy().
+  AppendToDelayTimer(200);
+  return true;
+}
 
 class SoundLibrary  {
 public:
