@@ -4,6 +4,7 @@
 #ifdef ENABLE_AUDIO
 
 #include "sound_queue.h"
+#include "../common/delay_timer.h"
 
 // Sound library
 EFFECT(mnum); // menu numbers
@@ -58,6 +59,29 @@ public:
   const char* name() { return "SoundQueue"; }
   void Loop() override {
     PollSoundQueue(wav_player_);
+    // While an error WAV is playing, keep the delay timer just ahead of the
+    // sound's end so hybrid_font.h defers boot/newfont until the queue drains.
+    // We track remaining playback time instead of appending a fixed value on
+    // every tick: the fixed approach grows the deadline far into the future
+    // (100 ms × loop-rate ms/s) and prevents boot/font sounds from ever firing.
+    if (busy() && wav_player_) {
+      float pos = wav_player_->pos();
+      float len = wav_player_->length();
+      // pos() can return a small negative value when the wav file has been fully
+      // read but the audio buffer is still draining (playwav::pos() returns 0.0
+      // once isPlaying() is false, making buffered_wav_player::pos() go negative
+      // by ~buffer_duration).  Without this guard, remaining = len - (-buf) > len,
+      // which pushes the deadline ~len+0.5 s into the future and causes a 2–3 s
+      // extra wait after the error sound finishes.  Clamp pos to 0 so that
+      // remaining is treated as ≈ 0 in that end-of-file drain phase.
+      if (pos < 0.0f) pos = 0.0f;
+      float remaining = len - pos;
+      if (remaining < 0.0f) remaining = 0.0f;
+      uint32_t needed_until = millis() + (uint32_t)(remaining * 1000) + 500;
+      if (needed_until > delay_until_ms()) {
+        delay_until_ms() = needed_until;
+      }
+    }
   }
 
   void require_version(int version) {
@@ -103,6 +127,49 @@ private:
 };
 
 #define SOUNDQ (getPtr<SoundQueueSingleton>())
+
+// Play an error WAV from the current font directory, falling back to the root-level
+// "errors/" folder on the SD card.  Returns false when the file cannot be found so
+// that errors.h falls through to the talkie/beeper.  When the file IS found the sound
+// is queued via SoundQueueSingleton (sequential, not simultaneous) and a sentinel is
+// set on SaberBase::sound_length so the "if (sound_length > 0) return;" guard in
+// errors.h fires immediately, suppressing the talkie even before the queue drains and
+// the WAV header is parsed.
+inline bool PlayErrorMessage(const char* filename) {
+  // Pre-check: confirm the file exists in a font directory or the root "errors/" folder.
+  // This must be done before queuing so we only suppress the talkie when we know a WAV
+  // will actually play.  (SoundToPlayErrorFile repeats the same search at play time.)
+  bool found = false;
+  bool in_font = false;
+  for (const char* dir = current_directory; dir; dir = next_current_directory(dir)) {
+    PathHelper full_name(dir, filename);
+    if (LSFS::Exists(full_name)) { found = true; in_font = true; break; }
+  }
+  if (!found) {
+    PathHelper err_path("errors", filename);
+    found = LSFS::Exists(err_path);
+  }
+  if (!found) {
+    PVLOG_NORMAL << "*** Error wav not found: " << filename
+                 << " — falling through to talkie/beeper\n";
+    return false;  // No WAV found — let talkie/beeper handle it
+  }
+  PVLOG_NORMAL << "*** Error wav found in "
+               << (in_font ? "font" : "errors/") << " folder: " << filename << "\n";
+  // File confirmed.  Queue for sequential async playback.
+  if (!SOUNDQ->Play(SoundToPlayErrorFile(filename))) return false;
+  // Sentinel: the queue hasn't started playing yet so sound_length is still 0.
+  // Set a non-zero value now so errors.h suppresses the talkie immediately.
+  if (SaberBase::sound_length < 0.001f) SaberBase::sound_length = 0.001f;
+  // Initial hold — keeps hybrid_font.h's DelayTimerActive() check true until the
+  // first Loop() tick, when SoundQueueSingleton::Loop() takes over and sets the
+  // deadline to millis() + remaining_playback + 500 ms.  Use 500 ms (not 200 ms)
+  // to cover Activate2() config.ini reads and EFFECT_CHDIR observer calls, which
+  // can take >200 ms on slow SD cards and would otherwise let DoBoot/DoNewFont
+  // slip past the guard and start simultaneously with the queued error sound.
+  AppendToDelayTimer(500);
+  return true;
+}
 
 class SoundLibrary  {
 public:

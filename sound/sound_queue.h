@@ -41,8 +41,13 @@ class SoundToPlayErrorFile : public SoundToPlayBase {
 public:
   SoundToPlayErrorFile(const char* filename) : filename_(filename) {}
   bool Play(BufferedWavPlayer* player) override {
-    return player->PlayInCurrentDir(filename_) ||
-           player->PlayInDir("errors", filename_);
+    if (player->PlayInCurrentDir(filename_)) return true;
+    // Font directory lookup missed; try the root-level errors/ folder.
+    PVLOG_NORMAL << "Trying errors/ folder for " << filename_ << "\n";
+    if (player->PlayInDir("errors", filename_)) return true;
+    PVLOG_NORMAL << "*** Error wav " << filename_
+                 << " not found at play time (SD remount/path change?)\n";
+    return false;
   }
 private:
   const char* filename_;
