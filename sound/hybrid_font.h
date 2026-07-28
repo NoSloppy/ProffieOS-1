@@ -614,7 +614,7 @@ public:
       case EFFECT_BLAST: Play(&SFX_blaster, &SFX_blst); return;
       case EFFECT_QUOTE: PlayCommon(&SFX_quote); return;
       case EFFECT_BOOT:
-        if (DelayTimerActive() || error_sound_active()) {
+        if (DelayTimerActive()) {
           pending_boot_ = true;
           PVLOG_NORMAL << "*** BOOT deferred — waiting for error sound to finish\n";
           return;
@@ -623,7 +623,7 @@ public:
         // If no boot sounds are found, fall through to font.
         [[gnu::fallthrough]];
       case EFFECT_NEWFONT:
-        if (DelayTimerActive() || error_sound_active()) {
+        if (DelayTimerActive()) {
           pending_newfont_ = true;
           PVLOG_NORMAL << "*** NEWFONT deferred — waiting for error sound to finish\n";
           return;
@@ -902,7 +902,7 @@ public:
     }
 // \/\/\/\/ this is BC only because I think this is how it should work
       // Delay boot.wav for error talkie/beeps to finish..
-    if (!DelayTimerActive() && !error_sound_active()) {
+    if (!DelayTimerActive()) {
       if (pending_boot_) {
         pending_boot_ = false;
         if (!PlayPolyphonic(&SFX_boot)) {
