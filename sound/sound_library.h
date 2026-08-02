@@ -59,22 +59,11 @@ public:
   const char* name() { return "SoundQueue"; }
   void Loop() override {
     PollSoundQueue(wav_player_);
-    // While an error WAV is playing, keep the delay timer just ahead of the
-    // sound's end so hybrid_font.h defers boot/newfont until the queue drains.
-    // We track remaining playback time instead of appending a fixed value on
-    // every tick: the fixed approach grows the deadline far into the future
-    // (100 ms × loop-rate ms/s) and prevents boot/font sounds from ever firing.
+    // Keep delay_until_ms just past current WAV end so boot/font waits for queue drain.
     if (busy() && wav_player_) {
       float pos = wav_player_->pos();
       float len = wav_player_->length();
-      // pos() goes negative when the wav file has been fully decoded but the
-      // audio buffer is still draining: wav.pos() returns 0.0 once the decoder
-      // is done while buffered()/AUDIO_RATE is still > 0, so pos() = -drain_time.
-      // The correct remaining time in that phase is -pos (the actual drain, ≈ 6 ms).
-      // The previous code clamped pos to 0, which made remaining = len - 0 = len
-      // (the full wav duration) and pushed the timer ~len+500 ms into the future
-      // on every Loop tick during the 6 ms drain window — producing the 2–3 s
-      // silence gap observed between the error sound and the boot/font wav.
+      // pos() is negative while output buffer drains after decode; then remaining is -pos.
       float remaining = (pos < 0.0f) ? -pos : (len - pos);
       if (remaining < 0.0f) remaining = 0.0f;
       uint32_t needed_until = millis() + (uint32_t)(remaining * 1000) + 500;
