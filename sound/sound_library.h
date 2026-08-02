@@ -118,9 +118,7 @@ private:
 #define SOUNDQ (getPtr<SoundQueueSingleton>())
 
 inline bool PlayErrorMessage(const char* filename) {
-  // Confirm the file exists in a font directory or the root "errors/" folder
-  // before queuing so we only suppress Talkie when we know a WAV
-  // will actually play. (SoundToPlayErrorFile repeats the same search at play time.)
+  // Check font dirs, then errors folder before queuing so Talkie is suppressed only if WAV exists.
   bool found = false;
   bool in_font = false;
   for (const char* dir = current_directory; dir; dir = next_current_directory(dir)) {
@@ -141,12 +139,7 @@ inline bool PlayErrorMessage(const char* filename) {
   if (!SOUNDQ->Play(SoundToPlayErrorFile(filename))) return false;
   // Sound_length is still 0. Set a non-zero value now so errors.h suppresses Talkie immediately.
   if (SaberBase::sound_length < 0.001f) SaberBase::sound_length = 0.001f;
-  // Initial hold — keeps hybrid_font.h's DelayTimerActive() check true until the
-  // first Loop() tick, when SoundQueueSingleton::Loop() takes over and sets the
-  // deadline to millis() + remaining_playback + 500 ms.  Used 500 ms
-  // to cover Activate2() config.ini reads and EFFECT_CHDIR calls, which
-  // could take some time on slow SD cards, which could let DoBoot/DoNewFont
-  // slip past the guard and start simultaneously with the queued error sound.
+  // Short initial hold until Loop() updates delay from actual remaining playback.
   AppendToDelayTimer(500);
   return true;
 }
