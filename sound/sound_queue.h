@@ -34,18 +34,16 @@ private:
 };
 
 
-// Like SoundToPlayInCurrentDir but also searches the "errors/" directory
-// as a fallback.  Used by PlayErrorMessage() so that error wavs stored in
-// the global "errors/" folder work regardless of the current font dir.
+// Like SoundToPlayInCurrentDir but also searches the "errors" directory
+// as a fallback.  Used by PlayErrorMessage()
 class SoundToPlayErrorFile : public SoundToPlayBase {
 public:
   SoundToPlayErrorFile(const char* filename) : filename_(filename) {}
   bool Play(BufferedWavPlayer* player) override {
     if (player->PlayInCurrentDir(filename_)) return true;
-    // Font directory lookup missed; try the root-level errors/ folder.
-    PVLOG_NORMAL << "Trying errors/ folder for " << filename_ << "\n";
+    PVLOG_DEBUG << "Trying errors/ folder for " << filename_ << "\n";
     if (player->PlayInDir("errors", filename_)) return true;
-    PVLOG_NORMAL << "*** Error wav " << filename_
+    PVLOG_DEBUG << "*** Error wav " << filename_
                  << " not found at play time (SD remount/path change?)\n";
     return false;
   }

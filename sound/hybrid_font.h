@@ -1,7 +1,7 @@
 #ifndef SOUND_HYBRID_FONT_H
 #define SOUND_HYBRID_FONT_H
 #include "../common/fuse.h"
-#include "../common/delay_timer.h"  // this is BC only because I think this is how it should work
+#include "../common/delay_timer.h"
 
 class FontConfigFile : public ConfigFile {
 public:
@@ -616,16 +616,16 @@ public:
       case EFFECT_BOOT:
         if (DelayTimerActive()) {
           pending_boot_ = true;
-          PVLOG_NORMAL << "*** BOOT deferred — waiting for error sound to finish\n";
+          PVLOG_DEBUG << "*** BOOT deferred — waiting for error sound to finish\n";
           return;
         }
         if (PlayPolyphonic(&SFX_boot)) return;
-        // If no boot sounds are found, fall through to font.
+        // If no boot sounds are found, fall through to font. - This is not how it currently works.
         [[gnu::fallthrough]];
       case EFFECT_NEWFONT:
         if (DelayTimerActive()) {
           pending_newfont_ = true;
-          PVLOG_NORMAL << "*** NEWFONT deferred — waiting for error sound to finish\n";
+          PVLOG_DEBUG << "*** NEWFONT deferred — waiting for error sound to finish\n";
           return;
         }
         SB_NewFont();
@@ -900,13 +900,12 @@ public:
         SaberBase::DoEffect(EFFECT_POSTOFF, saved_location_);
       }
     }
-// \/\/\/\/ this is BC only because I think this is how it should work
       // Delay boot.wav for error talkie/beeps to finish..
     if (!DelayTimerActive()) {
       if (pending_boot_) {
         pending_boot_ = false;
         if (!PlayPolyphonic(&SFX_boot)) {
-          // No boot sound — fall through to font
+          // No boot sound — fall through to font - not how it works currently
           pending_newfont_ = true;
         }
       }
@@ -915,7 +914,6 @@ public:
         SB_NewFont();
       }
     }
-// /\/\/\/\ this is BC only because I think this is how it should work
   }
 
   void StopIdleSound() {
