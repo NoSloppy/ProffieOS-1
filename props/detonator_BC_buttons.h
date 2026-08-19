@@ -268,14 +268,15 @@ PVLOG_NORMAL << "************************* MUTE/UNMUTE\n";
         DetonatorOff();
         return true;
 
-// Change Preset / Start Countdown Timer
+// Change Preset / Disarm
       case EVENTID(BUTTON_AUX, EVENT_SECOND_SAVED_CLICK_SHORT, MODE_ON):
       case EVENTID(BUTTON_NONE, EVENT_TWIST, MODE_ON):
-        if (!armed_) {
-          FusorPreset();
-        } else {
-PVLOG_NORMAL << "************************* ToggleCountdown start\n";
+        if (armed_) {
+          armed_ = false;
+PVLOG_NORMAL << "************************* Disarm - armed_ = false;, ToggleCountdown called\n";
           ToggleCountdown();
+        } else {
+          FusorPreset();
         }
         return true;
 
@@ -296,11 +297,10 @@ PVLOG_NORMAL << "************************* ToggleCountdown start\n";
         }
         return true;
 
-// Disarm
+// Start Countdown Timer / Start Or Stop Track
       case EVENTID(BUTTON_AUX, EVENT_FIRST_HELD_MEDIUM, MODE_ON):
         if (armed_) {
-          armed_ = false;
-PVLOG_NORMAL << "************************* Disarm - armed_ = false;, ToggleCountdown called\n";
+PVLOG_NORMAL << "************************* ToggleCountdown start\n";
           ToggleCountdown();
         } else {
           StartOrStopTrack();
