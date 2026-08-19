@@ -1,6 +1,6 @@
-// DetonatorOliBCButtons Rev 1
+// detonator_BC_buttons.h Rev 1
 
-/* Created by Brian Conner for KR Thermal Detonator run 2026, based on DetonatorOliButtons.h by OlivierFlying747-8
+/* Created by Brian Conner for KR Thermal Detonator run 2026, based on detonator_Oli_buttons.h by OlivierFlying747-8
   https://fredrik.hubbe.net/lightsaber/proffieos.html
   Copyright (c) 2016-2025 Fredrik Hubinette
   Copyright (c) 2026 Brian Conner with contributions by:
@@ -9,55 +9,24 @@
   Distributed under the terms of the GNU General Public License v3.
   https://www.gnu.org/licenses/
 
-I modified the code from DetonatorOliButtons.h to customize for use with KR Sabers TD 2026.
+I modified the code from detonator_Oli_buttons.h to customize for use with KR Sabers TD 2026.
 
-I removed some functionality; volume up/down, stealth timer, OLED display functionality, some defines, etc...
+I removed some functionality; 1 button, OFF mode (latching is POWER, expected "dead" when closed), volume up/down, stealth timer, OLED display functionality, some defines, etc...
+Added Mute, Quote playback with non-overlapping, dedicated countdown timer sound.
 
 You can arm then disarm the TD, or arm and make it detonate (via clash for immediate detonation or via countdown timer for
 delayed detonation).
 Once the countdown timer is active, it can't be turned off and will go boom either with a Clash, or when the timer expires.
 
-This prop suppots the use of a non-latching POW button so it is compatible with my OlivierFlying747-8's multi_prop, or any non-latching power button scenario.
+This prop suppots the use of a non-latching POW button so it is compatible with OlivierFlying747-8's multi_prop, or any non-latching power button scenario.
 To use it with non-latching POW button, add "#define DETONATOR_BUTTON_POWER_IS_MOMENTARY" to your CONFIG_TOP section..
 
-Your Thermal Detonator NEEDS to have one or more buttons.
-
+This detonator prop file is written for use with 2 button Thermal Detonators and ProffieOS v8.x and above.
 ** Note for your button wiring: This detonator prop file uses POW & AUX buttons (BTN1 and BTN2 pads on Proffieboard) unlike detonator.h which uses POW & AUX2).
 
-This detonator prop was created to be compatible with ProffieOS v8.x
-
-Includes 1 and 2 button controls.
-
-============= LIST OF BUTTON & MOTION COMMANDS: =================================================================================
-1 Button:
-SWING while OFF : Turn ON (not armed)
-SWING while ON  : Turn OFF (disarm if armed, will stop armhum.wav & plays endarm.wav if armhum.wav was playing)
-                  However, if a countdown was started, it will continue until boom.wav
-
-POWER Button:
-  - Short click while ON (not in volume menu):
-      - If disarmed → Arm (plays bgnarm.wav followed by armhum.wav)
-      - If armed    → Start 6s countdown to boom (continues armhum.wav)
-  - Long click while ON (before countdown): Start 12s silent "stealth" timer (only initial beep, blade stays on)
-  - Double click (ON or OFF) : Start/Stop track
-  - Short click and hold (ON or OFF) : Enter/Exit Volume Menu
-  - Short click (while in Volume Menu):
-      - Pointing UP   → Volume Up
-      - Pointing DOWN → Volume Down
-      - Level         → No action
-  - Short click while OFF (not in Volume Menu):
-      - Pointing UP   → Next Preset
-      - Pointing DOWN → Previous Preset
-      - Level         → Jumped to first preset
-  - Triple click while OFF:
-      - Pointing UP   → Battery Level in %
-      - Pointing DOWN → Battery Level in Volts
-      - Level         → Battery Level in % & Volts
-
-CLASH (while ON and armed or while ON and stealth timer running option 1 or 2):
-  - Instantly trigger boom (interrupts any countdown), resets everything, turns the detonator OFF.
 =================================================================================================================================
-2 Buttons:
+Button Controls:
+================
 
 Latching POWER Button:
   - Turn ON (starts disarmed)   - Latch ON
@@ -74,22 +43,24 @@ AUX Button:
   - Play Quote                  - 3x Click
   - Start/Stop track            - Hold while Disarmed
   - Change Preset               - 2x Click or Twist when Disarmed (plays font.wav)
-          Next Preset     - Pointing UP
-          Previous Preset - Pointing DOWN
-          First Preset    - NOT pointing UP or DOWN
+          Next Preset     - While Pointing UP
+          Previous Preset - While Pointing DOWN
+          First Preset    - While NOT pointing UP or DOWN
+
   - Arm                         - Short Click while ON - or - Shake to ARM.(plays bgnarm.wav followed by armhum.wav)
   - Disarm                      - 2x Click while Armed (plays endarm.wav)
-  - Start Countdown Timer       - Hold while Armed (plays countdown.wav)
-
+  - Detonate:                   - Hold while Armed to start Countdown Timer (plays countdown.wav)
+                                  - or -
+                                  Clash while Armed to instantly trigger Boom (interrupts any countdown)
+                                  Detonation resets everything, turns the detonator OFF.
   - Spoken Battery Level        - 2x Click and Hold while Disarmed:
                                     Pointing UP   - Battery Level in percentage
                                     Pointing DOWN - Battery Level in volts
 
- - Twist Right when disarmed     - Next Preset
- - Twist Left when disarmed      - Previous Preset
 
-CLASH (while ON and armed or while ON and stealth timer running option1 or 2):
+CLASH (while Aarmed or while ON and stealth timer running option1 or 2):
   - Instantly trigger boom (interrupts any countdown), resets everything, turns the detonator OFF.
+=================================================================================================================================
 
 ============= LIST OF .wav USED in this detonator: ==============================================================================
 This prop version REQUIRES a ProffieOS Voicepack V1 or V2 for some of the sounds to work.
@@ -102,7 +73,7 @@ https://crucible.hubbe.net/t/additional-voicepacks/4227
 If you'd care to make a donation for Brian Conner's time making these Voicepacks:
 https://www.buymeacoffee.com/brianconner
 
-Your sound font should contain the below listed files to use detonator_Oli_buttons.h to it's full potential:
+Your sound font should contain the below listed files to use detonator_BC_buttons.h to it's full potential:
 
 poweron
 poweroff
@@ -126,8 +97,8 @@ List of optional detonator defines:
 =================================================================================================================================
 */
 
-#ifndef PROPS_DETONATOR_OLI_BC_BUTTONS_H
-#define PROPS_DETONATOR_OLI_BC_BUTTONS_H
+#ifndef PROPS_DETONATOR_BC_BUTTONS_H
+#define PROPS_DETONATOR_BC_BUTTONS_H
 
 #include "prop_base.h"
 #include "../sound/sound_library.h"
@@ -136,14 +107,14 @@ List of optional detonator defines:
 #define DETONATOR_TIMER_DURATION 6.0f // default is 6 seconds (set timing in seconds)
 #endif
 
-#define PROP_TYPE DetonatorOliBCButtons
+#define PROP_TYPE DetonatorBCButtons
 
 EFFECT(countdown);      // for countdown timer sound. optional. if not in font, plays armhum straight through
 
-class DetonatorOliBCButtons : public PROP_INHERIT_PREFIX PropBase {
+class DetonatorBCButtons : public PROP_INHERIT_PREFIX PropBase {
 public:
-  DetonatorOliBCButtons() : PropBase() {}
-  const char* name() override { return "DetonatorOliBCButtons"; }
+  DetonatorBCButtons() : PropBase() {}
+  const char* name() override { return "DetonatorBCButtons"; }
 
   enum NextAction {
     NEXT_ACTION_NOTHING,
@@ -243,7 +214,7 @@ PVLOG_NORMAL << "*************************  ToggleCountdown called, NOT armed, N
     switch (EVENTID(button, event, modifiers)) {
 
 // Mute Toggle Anytime. Resets on preset change or OFF/BOOM)
-      case EVENTID(BUTTON_POWER, EVENT_THIRD_HELD_MEDIUM, MODE_ON):
+      case EVENTID(BUTTON_AUX, EVENT_THIRD_HELD_MEDIUM, MODE_ON):
         if (!SetMute(true)) SetMute(false);
 PVLOG_NORMAL << "************************* MUTE/UNMUTE\n";
         return true;
@@ -385,6 +356,6 @@ private:
   bool armed_                   = false;        // once armed_, it can go boom with clash
 
 
-}; // class DetonatorOliBCButtons
+}; // class DetonatorBCButtons
 
-#endif // PROPS_DETONATOR_OLI_BC_BUTTONS_H
+#endif // PROPS_DETONATOR_BC_BUTTONS_H
