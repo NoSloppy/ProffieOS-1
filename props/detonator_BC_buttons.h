@@ -145,7 +145,9 @@ public:
           // monophonic boom player, which is why the logs reported boom.wav but
           // the detonation was silent.
           SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
-          SaberBase::DoEndLockup();
+          if (!(SFX_lockup && !SFX_humm)) {
+            SaberBase::DoEndLockup();
+          }
           if (SaberBase::IsOn()) {
             Off(OFF_IDLE);
           }
