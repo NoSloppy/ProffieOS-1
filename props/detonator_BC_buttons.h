@@ -289,8 +289,9 @@ PVLOG_NORMAL << "************************* ToggleCountdown start\n";
         if (armed_) {
 PVLOG_NORMAL << "*************************  Clash to Boom,  armed, NEXT_ACTION_BLOW\n";
           SetNextAction(NEXT_ACTION_BLOW, 0);
-        }
+        } else {
 PVLOG_NORMAL << "*************************  Clash to Boom,  NOT armed, return true\n";
+        }
         return true;
 
 
