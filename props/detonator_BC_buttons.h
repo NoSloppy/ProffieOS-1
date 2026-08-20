@@ -150,7 +150,13 @@ public:
           // (e.g. by smoothswing ducking) before this player gets reused.
           hybrid_font.SetHumVolume(1.0);
           Off(OFF_BLAST);
-          // Reset everything that's been blown to bits.
+          // Reset everything that's been blown to bits: silently reset the
+          // alt-sound bank back to idle (alt0) so the next poweron doesn't
+          // start up armed. OFF_BLAST does not do this on its own, and using
+          // DoEffect(EFFECT_ALT_SOUND, ...) here (instead of the silent
+          // ResetCurrentAlternative()) would trigger RestartHum() and
+          // re-kill the boom player, same as above.
+          ResetCurrentAlternative();
           armed_ = false;
           break;
       }
@@ -184,13 +190,15 @@ public:
                                                           // *BC - make this section use pos() with `len` to start wav like humStart does.
       if (SFX_countdown) {
         // hybrid_font.PlayMonophonic(&SFX_countdown, &SFX_hum);
-        // Stop arm lockup loop (playing endarm.wav if present), then play
-        // countdown as monophonic. DoEndLockup() must be called *before*
-        // SetLockup(LOCKUP_NONE), otherwise SB_EndLockup() (in
-        // sound/hybrid_font.h) sees LOCKUP_NONE and can't tell it was
-        // ending an armed lockup, so it skips playing endarm.wav.
-        SaberBase::DoEndLockup();
+        // Stop arm lockup loop without playing endarm, then play countdown
+        // as monophonic. This is intentional: countdown should transition
+        // straight into countdown.wav/boom.wav with no endarm.wav in
+        // between. endarm.wav is only meant to play on Disarm() (manually
+        // cancelling the arm) or on power-off, so SetLockup(LOCKUP_NONE) is
+        // called *before* DoEndLockup() here so that SB_EndLockup() (in
+        // sound/hybrid_font.h) sees LOCKUP_NONE and skips endarm.wav.
         SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
+        SaberBase::DoEndLockup();
         hybrid_font.PlayMonophonic(&SFX_countdown, &SFX_hum);
       }
 PVLOG_NORMAL << "************************* SetNextAction(NEXT_ACTION_BLOW" << DETONATOR_TIMER_DURATION << "\n";
