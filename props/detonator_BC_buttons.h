@@ -167,8 +167,8 @@ public:
 
   void TriggerBoom() {
     StopArmedLoop(false);
+    SaberBase::DoEffect(EFFECT_ALT_SOUND, 0.0, 0);  // Reset alt before boom so RestartHum can't cut boom short
     Off(OFF_BLAST);
-    SaberBase::DoEffect(EFFECT_ALT_SOUND, 0.0, 0);
     armed_ = false;
     countdown_active_ = false;
   }
@@ -188,7 +188,7 @@ PVLOG_NORMAL << "************************* ToggleCountdown called\n";
       if (SFX_countdown) {
         // Stop arm lockup loop without playing endarm, then play countdown as monophonic.
         StopArmedLoop(false);
-        hybrid_font.PlayMonophonic(&SFX_countdown, NULL);
+        hybrid_font.PlayMonophonic(&SFX_countdown, &SFX_hum);
         if (hybrid_font.GetCurrentEffectLength() > 0.0f) {
           countdown_delay = hybrid_font.GetCurrentEffectLength();
         }
