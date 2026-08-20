@@ -139,12 +139,7 @@ public:
           armed_ = true;
           break;
         case NEXT_ACTION_BLOW:
-          // Clear lockup first so OFF_BLAST doesn't emit endarm before boom.
-          SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
-          Off(OFF_BLAST);
-          // Reset everything that's been blown to bits.
-          SaberBase::DoEffect(EFFECT_ALT_SOUND, 0.0, 0);
-          armed_ = false;
+          TriggerBoom();
           break;
       }
       next_action_ = NEXT_ACTION_NOTHING;
@@ -159,23 +154,54 @@ public:
     SetNextAction(NEXT_ACTION_ARM, len);
   }
 
+  void StopArmedLoop(bool play_end_sound) {
+    if (SaberBase::Lockup() != SaberBase::LOCKUP_ARMED) return;
+    if (play_end_sound) {
+      SaberBase::DoEndLockup();
+      SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
+    } else {
+      SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
+      SaberBase::DoEndLockup();
+    }
+  }
+
+  void TriggerBoom() {
+    StopArmedLoop(false);
+    Off(OFF_BLAST);
+    SaberBase::DoEffect(EFFECT_ALT_SOUND, 0.0, 0);
+    armed_ = false;
+    countdown_active_ = false;
+  }
+
+  void Disarm() {
+    StopArmedLoop(true);
+    SaberBase::DoEffect(EFFECT_ALT_SOUND, 0.0, 0);
+    armed_ = false;
+    countdown_active_ = false;
+    SetNextAction(NEXT_ACTION_NOTHING, 0);
+  }
+
   void ToggleCountdown() {
 PVLOG_NORMAL << "************************* ToggleCountdown called\n";
     if (armed_) {
-                                                          // *BC - make this section use pos() with `len` to start wav like humStart does.
+      float countdown_delay = DETONATOR_TIMER_DURATION;
       if (SFX_countdown) {
         // Stop arm lockup loop without playing endarm, then play countdown as monophonic.
-        SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
-        SaberBase::DoEndLockup();
+        StopArmedLoop(false);
         hybrid_font.PlayMonophonic(&SFX_countdown, NULL);
+        if (hybrid_font.GetCurrentEffectLength() > 0.0f) {
+          countdown_delay = hybrid_font.GetCurrentEffectLength();
+        }
       }
-PVLOG_NORMAL << "************************* SetNextAction(NEXT_ACTION_BLOW" << DETONATOR_TIMER_DURATION << "\n";
-      SetNextAction(NEXT_ACTION_BLOW, DETONATOR_TIMER_DURATION);
+      armed_ = false;
+      countdown_active_ = true;
+PVLOG_NORMAL << "************************* SetNextAction(NEXT_ACTION_BLOW" << countdown_delay << "\n";
+      SetNextAction(NEXT_ACTION_BLOW, countdown_delay);
     } else {
 PVLOG_NORMAL << "*************************  ToggleCountdown called, NOT armed, NEXT_ACTION_NOTHING\n";
-      SaberBase::DoEndLockup();
-      SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
+      StopArmedLoop(true);
       SaberBase::DoEffect(EFFECT_ALT_SOUND, 0.0, 0);
+      countdown_active_ = false;
       SetNextAction(NEXT_ACTION_NOTHING, 0);
     }
   }
@@ -239,16 +265,18 @@ PVLOG_NORMAL << "************************* MUTE/UNMUTE\n";
       // This is for using this detonator without a latching button.
       case EVENTID(BUTTON_POWER, EVENT_FIRST_SAVED_CLICK_SHORT, MODE_ON):
 #endif
+        if (countdown_active_) return true;
         DetonatorOff();
         return true;
 
 // Change Preset / Disarm
       case EVENTID(BUTTON_AUX, EVENT_SECOND_SAVED_CLICK_SHORT, MODE_ON):
       case EVENTID(BUTTON_NONE, EVENT_TWIST, MODE_ON):
-        if (armed_) {
-          armed_ = false;
-PVLOG_NORMAL << "************************* Disarm - armed_ = false;, ToggleCountdown called\n";
-          ToggleCountdown();
+        if (countdown_active_) {
+          return true;
+        } else if (armed_) {
+PVLOG_NORMAL << "************************* Disarm\n";
+          Disarm();
         } else {
           FusorPreset();
         }
@@ -266,14 +294,16 @@ PVLOG_NORMAL << "************************* Disarm - armed_ = false;, ToggleCount
 // Arm
       case EVENTID(BUTTON_AUX, EVENT_FIRST_SAVED_CLICK_SHORT, MODE_ON):
       case EVENTID(BUTTON_NONE, EVENT_SHAKE, MODE_ON):
-        if (!armed_) {
+        if (!armed_ && !countdown_active_) {
           BeginArm();
         }
         return true;
 
 // Start Countdown Timer / Start Or Stop Track
       case EVENTID(BUTTON_AUX, EVENT_FIRST_HELD_MEDIUM, MODE_ON):
-        if (armed_) {
+        if (countdown_active_) {
+          return true;
+        } else if (armed_) {
 PVLOG_NORMAL << "************************* ToggleCountdown start\n";
           ToggleCountdown();
         } else {
@@ -283,17 +313,18 @@ PVLOG_NORMAL << "************************* ToggleCountdown start\n";
 
 // Clash to Boom if Armed or when timer is running
       case EVENTID(BUTTON_NONE, EVENT_CLASH, MODE_ON):
-        if (armed_) {
-PVLOG_NORMAL << "*************************  Clash to Boom,  armed, NEXT_ACTION_BLOW\n";
-          SetNextAction(NEXT_ACTION_BLOW, 0);
+        if (armed_ || countdown_active_) {
+PVLOG_NORMAL << "*************************  Clash to Boom, armed/timer active\n";
+          TriggerBoom();
+        } else {
+PVLOG_NORMAL << "*************************  Clash to Boom, NOT armed\n";
         }
-PVLOG_NORMAL << "*************************  Clash to Boom,  NOT armed, return true\n";
         return true;
 
 
 // Battery Level
       case EVENTID(BUTTON_AUX, EVENT_SECOND_HELD_MEDIUM, MODE_ON):
-        if (!armed_) {
+        if (!armed_ && !countdown_active_) {
           FusorBatteryLevel();
         }
         return true;
@@ -357,6 +388,7 @@ private:
   //bool powered_               = true;         // from original detonator.h, but not used any more.
   float len                     = 0.0f;         // countdown timer duration (in seconds)
   bool armed_                   = false;        // once armed_, it can go boom with clash
+  bool countdown_active_        = false;        // once countdown starts, it continues until boom
 
 
 }; // class DetonatorBCButtons
