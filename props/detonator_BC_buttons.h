@@ -139,10 +139,10 @@ public:
           armed_ = true;
           break;
         case NEXT_ACTION_BLOW:
-          SaberBase::DoEffect(EFFECT_BOOM, 0);
+          // Clear lockup first so OFF_BLAST doesn't emit endarm before boom.
+          SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
           Off(OFF_BLAST);
           // Reset everything that's been blown to bits.
-          SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
           SaberBase::DoEffect(EFFECT_ALT_SOUND, 0.0, 0);
           armed_ = false;
           break;
@@ -163,8 +163,11 @@ public:
 PVLOG_NORMAL << "************************* ToggleCountdown called\n";
     if (armed_) {
                                                           // *BC - make this section use pos() with `len` to start wav like humStart does.
-      if (&SFX_countdown) {
-        hybrid_font.PlayMonophonic(&SFX_countdown, &SFX_hum);
+      if (SFX_countdown) {
+        // Stop arm lockup loop without playing endarm, then play countdown as monophonic.
+        SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
+        SaberBase::DoEndLockup();
+        hybrid_font.PlayMonophonic(&SFX_countdown, NULL);
       }
 PVLOG_NORMAL << "************************* SetNextAction(NEXT_ACTION_BLOW" << DETONATOR_TIMER_DURATION << "\n";
       SetNextAction(NEXT_ACTION_BLOW, DETONATOR_TIMER_DURATION);
