@@ -139,29 +139,17 @@ public:
           armed_ = true;
           break;
         case NEXT_ACTION_BLOW:
-          // NOTE: Don't send EFFECT_ALT_SOUND here. Doing so (switching the
-          // smoothswing alt bank back to idle) right before Off(OFF_BLAST)
-          // restarts/kills the currently playing hum_player_ (via
-          // RestartHum() in hybrid_font.h) at the exact moment boom.wav
-          // needs to play, which was silencing/undermining the boom sound.
-          // Since we're about to turn everything off anyway, there's no
-          // need to restore the idle alt-sound bank first.
-          // Clear the lockup state (no sound side effect, unlike
-          // DoEndLockup()/EFFECT_ALT_SOUND above) so it doesn't stay stuck
-          // at LOCKUP_ARMED after the detonator turns itself off.
+          // Silence armhum/endarm first, then do a silent OFF and trigger boom
+          // directly. Off(OFF_BLAST) also emits EFFECT_BLAST, and when the font
+          // has no blaster sounds that fallback tears down the just-started
+          // monophonic boom player, which is why the logs reported boom.wav but
+          // the detonation was silent.
           SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
-          Off(OFF_BLAST);
-          // Make sure boom isn't muted by whatever hum volume was last set
-          // (e.g. by smoothswing ducking) before this player gets reused.
-          // This must happen *after* Off(OFF_BLAST), because EFFECT_BOOM
-          // creates the replacement player there.
-          hybrid_font.SetHumVolume(1.0);
-          // Reset everything that's been blown to bits: silently reset the
-          // alt-sound bank back to idle (alt0) so the next poweron doesn't
-          // start up armed. OFF_BLAST does not do this on its own, and using
-          // DoEffect(EFFECT_ALT_SOUND, ...) here (instead of the silent
-          // ResetCurrentAlternative()) would trigger RestartHum() and
-          // re-kill the boom player, same as above.
+          SaberBase::DoEndLockup();
+          if (SaberBase::IsOn()) {
+            Off(OFF_IDLE);
+          }
+          SaberBase::DoEffect(EFFECT_BOOM, 0);
           ResetCurrentAlternative();
           armed_ = false;
           break;
