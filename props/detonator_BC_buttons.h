@@ -149,6 +149,10 @@ public:
           // Make sure boom isn't muted by whatever hum volume was last set
           // (e.g. by smoothswing ducking) before this player gets reused.
           hybrid_font.SetHumVolume(1.0);
+          // Clear the lockup state (no sound side effect, unlike
+          // DoEndLockup()/EFFECT_ALT_SOUND above) so it doesn't stay stuck
+          // at LOCKUP_ARMED after the detonator turns itself off.
+          SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
           Off(OFF_BLAST);
           // Reset everything that's been blown to bits: silently reset the
           // alt-sound bank back to idle (alt0) so the next poweron doesn't
