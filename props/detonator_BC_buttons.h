@@ -141,11 +141,11 @@ public:
         case NEXT_ACTION_BLOW:
           // SaberBase::DoEffect(EFFECT_BOOM, 0);
           // Clear lockup first so OFF_BLAST doesn't emit endarm before boom.
-          SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
+//          SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
+          SaberBase::DoEffect(EFFECT_ALT_SOUND, 0.0, 0);
           Off(OFF_BLAST);
           // Reset everything that's been blown to bits.
           // SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
-          SaberBase::DoEffect(EFFECT_ALT_SOUND, 0.0, 0);
           armed_ = false;
           break;
       }
@@ -161,8 +161,20 @@ public:
     SetNextAction(NEXT_ACTION_ARM, len);
   }
 
+  bool CountdownActive() const {
+    return next_action_ == NEXT_ACTION_BLOW;
+  }
+
+  void Disarm() {
+    SaberBase::DoEndLockup();
+    SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
+    SaberBase::DoEffect(EFFECT_ALT_SOUND, 0.0, 0);
+    armed_ = false;
+    SetNextAction(NEXT_ACTION_NOTHING, 0);
+  }
+
+
   void ToggleCountdown() {
-PVLOG_NORMAL << "************************* ToggleCountdown called\n";
     if (armed_) {
                                                           // *BC - make this section use pos() with `len` to start wav like humStart does.
       if (SFX_countdown) {
@@ -170,7 +182,7 @@ PVLOG_NORMAL << "************************* ToggleCountdown called\n";
         // Stop arm lockup loop without playing endarm, then play countdown as monophonic.
         SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
         SaberBase::DoEndLockup();
-        hybrid_font.PlayMonophonic(&SFX_countdown, NULL);
+        hybrid_font.PlayMonophonic(&SFX_countdown, &SFX_hum);
       }
 PVLOG_NORMAL << "************************* SetNextAction(NEXT_ACTION_BLOW" << DETONATOR_TIMER_DURATION << "\n";
       SetNextAction(NEXT_ACTION_BLOW, DETONATOR_TIMER_DURATION);
@@ -205,16 +217,22 @@ PVLOG_NORMAL << "*************************  ToggleCountdown called, NOT armed, N
   }
 
   void DetonatorOn() {
-      armed_ = false;
-      SetPower(true);
-      On();
+    armed_ = false;
+    SetPower(true);
+    On();
   }
 
   void DetonatorOff() {
-      armed_ = false;
-      SetPower(false);
-      Off();
-      }
+// +      if (CountdownActive()) return;
+// +      if (armed_) {
+// +        Disarm();
+// +      } else {
+// +        armed_ = false;
+// +      }
+    armed_ = false;
+    SetPower(false);
+    Off();
+  }
 
   bool Event2(enum BUTTON button, EVENT event, uint32_t modifiers) override {
     switch (EVENTID(button, event, modifiers)) {
@@ -245,18 +263,6 @@ PVLOG_NORMAL << "************************* MUTE/UNMUTE\n";
         DetonatorOff();
         return true;
 
-// Change Preset / Disarm
-      case EVENTID(BUTTON_AUX, EVENT_SECOND_SAVED_CLICK_SHORT, MODE_ON):
-      case EVENTID(BUTTON_NONE, EVENT_TWIST, MODE_ON):
-        if (armed_) {
-          armed_ = false;
-PVLOG_NORMAL << "************************* Disarm - armed_ = false;, ToggleCountdown called\n";
-          ToggleCountdown();
-        } else {
-          FusorPreset();
-        }
-        return true;
-
 // Play Quote
       case EVENTID(BUTTON_AUX, EVENT_THIRD_SAVED_CLICK_SHORT, MODE_ON):
         if (SFX_quote) {
@@ -265,6 +271,21 @@ PVLOG_NORMAL << "************************* Disarm - armed_ = false;, ToggleCount
         }
         return true;
 
+// Change Preset / Disarm
+      case EVENTID(BUTTON_AUX, EVENT_SECOND_SAVED_CLICK_SHORT, MODE_ON):
+      case EVENTID(BUTTON_NONE, EVENT_TWIST, MODE_ON):
+        // if (armed_) {
+        //   armed_ = false;
+        //   ToggleCountdown();
+        if (CountdownActive()) {
+          return true;
+        } else if (armed_) {
+          PVLOG_NORMAL << "**** Disarm\n";
+          Disarm();
+        } else {
+          FusorPreset();
+        }
+        return true;
 
 // Arm
       case EVENTID(BUTTON_AUX, EVENT_FIRST_SAVED_CLICK_SHORT, MODE_ON):
@@ -276,8 +297,11 @@ PVLOG_NORMAL << "************************* Disarm - armed_ = false;, ToggleCount
 
 // Start Countdown Timer / Start Or Stop Track
       case EVENTID(BUTTON_AUX, EVENT_FIRST_HELD_MEDIUM, MODE_ON):
-        if (armed_) {
-PVLOG_NORMAL << "************************* ToggleCountdown start\n";
+        // if (armed_) {
+        if (CountdownActive()) {
+          return true;
+        } else if (armed_) {
+          PVLOG_NORMAL << "**** Start Countdown Timer\n";
           ToggleCountdown();
         } else {
           StartOrStopTrack();
