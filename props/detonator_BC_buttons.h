@@ -139,13 +139,18 @@ public:
           armed_ = true;
           break;
         case NEXT_ACTION_BLOW:
-          // SaberBase::DoEffect(EFFECT_BOOM, 0);
-          // Clear lockup first so OFF_BLAST doesn't emit endarm before boom.
-//          SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
-          SaberBase::DoEffect(EFFECT_ALT_SOUND, 0.0, 0);
+          // NOTE: Don't send EFFECT_ALT_SOUND here. Doing so (switching the
+          // smoothswing alt bank back to idle) right before Off(OFF_BLAST)
+          // restarts/kills the currently playing hum_player_ (via
+          // RestartHum() in hybrid_font.h) at the exact moment boom.wav
+          // needs to play, which was silencing/undermining the boom sound.
+          // Since we're about to turn everything off anyway, there's no
+          // need to restore the idle alt-sound bank first.
+          // Make sure boom isn't muted by whatever hum volume was last set
+          // (e.g. by smoothswing ducking) before this player gets reused.
+          hybrid_font.SetHumVolume(1.0);
           Off(OFF_BLAST);
           // Reset everything that's been blown to bits.
-          // SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
           armed_ = false;
           break;
       }
@@ -179,9 +184,13 @@ public:
                                                           // *BC - make this section use pos() with `len` to start wav like humStart does.
       if (SFX_countdown) {
         // hybrid_font.PlayMonophonic(&SFX_countdown, &SFX_hum);
-        // Stop arm lockup loop without playing endarm, then play countdown as monophonic.
-        SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
+        // Stop arm lockup loop (playing endarm.wav if present), then play
+        // countdown as monophonic. DoEndLockup() must be called *before*
+        // SetLockup(LOCKUP_NONE), otherwise SB_EndLockup() (in
+        // sound/hybrid_font.h) sees LOCKUP_NONE and can't tell it was
+        // ending an armed lockup, so it skips playing endarm.wav.
         SaberBase::DoEndLockup();
+        SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
         hybrid_font.PlayMonophonic(&SFX_countdown, &SFX_hum);
       }
 PVLOG_NORMAL << "************************* SetNextAction(NEXT_ACTION_BLOW" << DETONATOR_TIMER_DURATION << "\n";
