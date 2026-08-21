@@ -50,9 +50,9 @@ countdown.wav
 
 Optional defines for your CONFIG_TOP section:
 ---------------------------------------------
-#define DETONATOR_BUTTON_POWER_IS_MOMENTARY    // If your detonator pow button is NOT latching (it's momentary) and has been defined as such in your config.
-#define DETONATOR_TIMER_DURATION 6.0f          // default is 6 seconds during delayed detonation.  (set timing in seconds)
-
+#define DETONATOR_TIMER_DURATION 6.0         // default is 6 seconds during delayed detonation.  (set timing in seconds)
+#define SPOKEN_BATTERY_LEVEL                 // Use to have battery level spoken (uses Voicepack sound files) If not defined, High/Mid/Low LED meter only.
+#define DETONATOR_BUTTON_POWER_IS_MOMENTARY  // If your detonator pow button is NOT latching (it's momentary) and has been defined as such in your config.
 
 
 Button Controls:
@@ -119,7 +119,6 @@ public:
     NEXT_ACTION_BLOW,
   };
 
-  void SetPower(bool on) {}
 
   void SetNextAction(NextAction what, float when_sec) {
     time_base_ = millis();
@@ -138,6 +137,7 @@ public:
         case NEXT_ACTION_BLOW:
           // Clear lockup first so OFF_BLAST doesn't emit endarm.
           SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
+          SaberBase::DoEndLockup();
           Off(OFF_BLAST);
           // Reset to idle smoothswings pair.
           ResetCurrentAlternative();
@@ -176,19 +176,19 @@ public:
       if (SFX_countdown) {
 /* make this to be really sexy, and use pos() and compenssate for longer or shorter user defined durations.
 wav would be delayed from starting if DETONATOR_TIMER_DURATION is > 6seconds, and truncated from the front end of the wav if DETONATOR_TIMER_DURATION< 6 seconds. */
+        // End LOCKUP_ARMED but skip playing endarm
+        SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
+        SaberBase::DoEndLockup();
         hybrid_font.PlayMonophonic(&SFX_countdown, &SFX_hum);
         boom_delay = hybrid_font.GetCurrentEffectLength();
 PVLOG_NORMAL << "****************** Have SFX_countdown NEXT_ACTION_BLOW in " << boom_delay << " seconds\n";
       } else {
 PVLOG_NORMAL << "**** No SFX_countdown, keep armhum lockup, use DETONATOR_TIMER_DURATION. NEXT_ACTION_BLOW in " << boom_delay << " seconds\n";
-        SetNextAction(NEXT_ACTION_BLOW, boom_delay);
-        return;
       }
     }
-    // Stop arm lockup loop without playing endarm
-    SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
-    SaberBase::DoEndLockup();
-
+    // USER1 used in blade style for countdown timer blade effect. Use Variation in the EXPLODE_MILLIS slot to sync timing.
+    SaberBase::SetVariation(boom_delay * 1000);
+    SaberBase::DoEffect(EFFECT_USER1, 0);
     SetNextAction(NEXT_ACTION_BLOW, boom_delay);
   }
 
@@ -215,14 +215,12 @@ PVLOG_NORMAL << "**** No SFX_countdown, keep armhum lockup, use DETONATOR_TIMER_
 
   void DetonatorOn() {
     armed_ = false;
-    SetPower(true);
     On();
   }
 
   void DetonatorOff() {
     if (CountdownActive()) return;
     armed_ = false;
-    SetPower(false);
     SetMute(false);
     Off();
   }
@@ -297,15 +295,18 @@ PVLOG_NORMAL << "**** MUTE/UNMUTE\n";
 
 // Clash to Boom (only if Armed)
       case EVENTID(BUTTON_NONE, EVENT_CLASH, MODE_ON):
+      case EVENTID(BUTTON_NONE, EVENT_STAB, MODE_ON):
         if (armed_) {
           Detonate(0);
         }
         return true;
 
 // Battery Level
+#ifdef SPOKEN_BATTERY_LEVEL
       case EVENTID(BUTTON_AUX, EVENT_SECOND_HELD_MEDIUM, MODE_ON):
         if (!armed_) FusorBatteryLevel();
         return true;
+#endif
 
     }  // switch (EVENTID)
     return false;
