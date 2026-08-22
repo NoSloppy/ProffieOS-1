@@ -98,6 +98,13 @@ public:
     delegate_->SB_Off(off_type, location);
   }
 
+  void SB_Effect(EffectType effect, EffectLocation location) override {
+    delegate_->SB_Effect(effect, location);
+    if (effect == EFFECT_ALT_SOUND && on_) {
+      alt_switch_pending_ = true;  // flip at the next A<->B transition
+    }
+  }
+
   enum class SwingState {
     OFF, // waiting for swing to start
     ON,  // swinging
@@ -121,9 +128,9 @@ public:
 
     switch (state_) {
       case SwingState::OFF:
-	if (!A.player || !B.player) {
-	  PickRandomSwing();
-	}
+        if (!A.player || !B.player) {
+          PickRandomSwing();
+        }
         if (speed < smooth_swing_config.SwingStrengthThreshold) {
 #if 1
           if (monitor.ShouldPrint(Monitoring::MonitorSwings)) {
@@ -134,7 +141,7 @@ public:
           break;
         }
         state_ = SwingState::ON;
-	[[gnu::fallthrough]];
+        [[gnu::fallthrough]];
 
       case SwingState::ON:
         // trigger accent swing
@@ -149,9 +156,18 @@ public:
           // If the current transition is done, switch A & B,
           // and set the next transition to be 180 (or 'separation') degrees from the one
           // that is done.
+          // Also handle faster swapping when Alt is switched.
+          bool swapped = false;
           while (A.end() < 0.0) {
             B.midpoint = A.midpoint + A.separation;
-	    Swap();
+            Swap();
+            swapped = true;
+          }
+          if (swapped && alt_switch_pending_) {
+            alt_switch_pending_ = false;
+            // bypass the 1000ms repick delay
+            last_random_ = 0;
+            PickRandomSwing();
           }
           float mixab = 0.0;
           if (A.begin() < 0.0)
@@ -194,7 +210,7 @@ public:
         A.set_volume(0);
         B.set_volume(0);
         state_ = SwingState::OUT;
-	[[gnu::fallthrough]];
+        [[gnu::fallthrough]];
 
       case SwingState::OUT:
         if (!A.isOff() || !B.isOff()) {
@@ -216,8 +232,8 @@ private:
     }
     void Play(Effect* effect, float start = 0.0) {
       if (!player) {
-	player = GetFreeWavPlayer();
-	if (!player) return;
+        player = GetFreeWavPlayer();
+        if (!player) return;
       }
       player->set_volume(0.0f);
       player->PlayOnce(effect, start);
@@ -261,6 +277,7 @@ private:
   Data A;
   Data B;
 
+  bool alt_switch_pending_ = false;
   uint32_t last_random_ = 0;
   bool on_ = false;;
   bool accent_swings_present = false;
