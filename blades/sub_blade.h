@@ -30,14 +30,18 @@ Like SubBlade, but LEDs are indexed with an additional 'stride' parameter,
 allowing you to "skip" over a regular number of pixels in the data chain. (Such as every other one)
 
 Usage: SubBladeWithList<int1, int2, ...>(blade_definition)
-Like SubBlade, but you provide a custom list of LED indices instead of a range.
-Useful for ring-based or irregular LED layouts.
+Like SubBladeWithSparseList, but kept as the simplest default name.
 
 Usage: SubBladeWithSparseList<int1, int2, ...>(blade_definition)
-Like SubBladeWithList, but keeps absolute LED positions on the full strip.
+Like SubBlade, but with a custom list of LED indices that keep their absolute
+positions on the full strip.
 Example: SubBladeWithSparseList<10, 27>(WS281XBladePtr<30, ...>())
 This exposes a 30-pixel logical blade where only pixels 10 and 27 are writable.
 All other logical pixels are automatically treated as non-target pixels.
+
+Usage: SubBladeWithCompactList<int1, int2, ...>(blade_definition)
+Legacy list behavior. List entries are compacted into a shorter logical blade.
+Useful for ring-based or irregular LED layouts that expect compact indexing.
 
 For more in-depth explanations, see the SubBlade Wiki pages here:
 https://github.com/profezzorn/ProffieOS/wiki/SubBlade
@@ -319,9 +323,9 @@ class BladeBase* SubBladeZZ(int first_led, int last_led, int stride, int column,
   return ret;
 }
 
-class SubBladeWrapperWithList : public SubBladeWrapper {
+class SubBladeWrapperCompactList : public SubBladeWrapper {
 public:
-  SubBladeWrapperWithList(const int* indices, int count)
+  SubBladeWrapperCompactList(const int* indices, int count)
       : indices_(indices), count_(count) {}
   void set(int led, Color16 c) override {
     if (led >= 0 && led < count_ && indices_[led] >= 0) {
@@ -341,7 +345,7 @@ protected:
   int count_;
 };
 
-BladeBase* SubBladeWithList(const int* indices, int count, BladeBase* blade) {
+BladeBase* SubBladeWithCompactList(const int* indices, int count, BladeBase* blade) {
   if (blade) {
     first_subblade_wrapper = last_subblade_wrapper = NULL;
   } else {
@@ -349,7 +353,7 @@ BladeBase* SubBladeWithList(const int* indices, int count, BladeBase* blade) {
     blade = first_subblade_wrapper->blade_;
   }
 
-  SubBladeWrapperWithList* ret = new SubBladeWrapperWithList(indices, count);
+  SubBladeWrapperCompactList* ret = new SubBladeWrapperCompactList(indices, count);
 
   if (first_subblade_wrapper) {
     ret->SetNext(last_subblade_wrapper);
@@ -366,17 +370,24 @@ BladeBase* SubBladeWithList(const int* indices, int count, BladeBase* blade) {
 
 // Allow inline LED indices in the blade config
 template <int... Indices>
-BladeBase* SubBladeWithList(BladeBase* blade) {
+BladeBase* SubBladeWithCompactList(BladeBase* blade) {
   static const int arr[sizeof...(Indices)] = { Indices... };
-  return SubBladeWithList(arr, sizeof...(Indices), blade);
+  return SubBladeWithCompactList(arr, sizeof...(Indices), blade);
 }
 
 class SubBladeWrapperSparseList : public SubBladeWrapper {
 public:
   SubBladeWrapperSparseList(const int* indices, int count)
       : indices_(indices), count_(count) {}
+  SubBladeWrapperSparseList(const SubBladeWrapperSparseList&) = delete;
+  SubBladeWrapperSparseList& operator=(const SubBladeWrapperSparseList&) = delete;
+  ~SubBladeWrapperSparseList() override {
+    delete[] membership_;
+  }
 
   void SetupSparseList(int logical_num_leds) {
+    delete[] membership_;
+    membership_ = nullptr;
     logical_num_leds_ = logical_num_leds;
     const int words = (logical_num_leds_ + 7) >> 3;
     membership_ = new uint8_t[words]();
@@ -410,18 +421,21 @@ private:
 
 BladeBase* SubBladeWithSparseList(const int* indices, int count, BladeBase* blade,
                                   int logical_num_leds = -1) {
-  if (blade) {
-    first_subblade_wrapper = last_subblade_wrapper = NULL;
-  } else {
+  BladeBase* base = blade;
+  if (!blade) {
     if (!first_subblade_wrapper) return NULL;
-    blade = first_subblade_wrapper->blade_;
+    base = first_subblade_wrapper->blade_;
   }
 
-  if (logical_num_leds <= 0) logical_num_leds = blade->num_leds();
-  if (logical_num_leds > blade->num_leds()) return NULL;
+  if (logical_num_leds <= 0) logical_num_leds = base->num_leds();
+  if (logical_num_leds > base->num_leds()) return NULL;
 
   for (int i = 0; i < count; i++) {
     if (indices[i] < 0 || indices[i] >= logical_num_leds) return NULL;
+  }
+
+  if (blade) {
+    first_subblade_wrapper = last_subblade_wrapper = NULL;
   }
 
   SubBladeWrapperSparseList* ret = new SubBladeWrapperSparseList(indices, count);
@@ -435,7 +449,7 @@ BladeBase* SubBladeWithSparseList(const int* indices, int count, BladeBase* blad
   }
 
   ret->SetupSparseList(logical_num_leds);
-  ret->SetupSubBlade(blade, 0, logical_num_leds);
+  ret->SetupSubBlade(base, 0, logical_num_leds);
   return ret;
 }
 
@@ -443,6 +457,16 @@ template <int... Indices>
 BladeBase* SubBladeWithSparseList(BladeBase* blade) {
   static const int arr[sizeof...(Indices)] = { Indices... };
   return SubBladeWithSparseList(arr, sizeof...(Indices), blade);
+}
+
+BladeBase* SubBladeWithList(const int* indices, int count, BladeBase* blade,
+                            int logical_num_leds = -1) {
+  return SubBladeWithSparseList(indices, count, blade, logical_num_leds);
+}
+
+template <int... Indices>
+BladeBase* SubBladeWithList(BladeBase* blade) {
+  return SubBladeWithSparseList<Indices...>(blade);
 }
 
 class BarBackWrapper : public SubBladeWrapper {
