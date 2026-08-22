@@ -151,7 +151,7 @@ public:
   void BeginArm() {
     SaberBase::SetLockup(SaberBase::LOCKUP_ARMED);
     SaberBase::DoBeginLockup();
-    len = hybrid_font.GetCurrentEffectLength();
+    float len = hybrid_font.GetCurrentEffectLength();
     // Switch from idle smoothswings to armed smoothswings.
     SaberBase::DoEffect(EFFECT_ALT_SOUND, 0.0, 1);
     SetNextAction(NEXT_ACTION_ARM, len);
@@ -181,9 +181,6 @@ wav would be delayed from starting if DETONATOR_TIMER_DURATION is > 6seconds, an
         SaberBase::DoEndLockup();
         hybrid_font.PlayMonophonic(&SFX_countdown, &SFX_hum);
         boom_delay = hybrid_font.GetCurrentEffectLength();
-PVLOG_NORMAL << "****************** Have SFX_countdown NEXT_ACTION_BLOW in " << boom_delay << " seconds\n";
-      } else {
-PVLOG_NORMAL << "**** No SFX_countdown, keep armhum lockup, use DETONATOR_TIMER_DURATION. NEXT_ACTION_BLOW in " << boom_delay << " seconds\n";
       }
     }
     // USER1 used in blade style for countdown timer blade effect. Use Variation in the EXPLODE_MILLIS slot to sync timing.
@@ -222,6 +219,7 @@ PVLOG_NORMAL << "**** No SFX_countdown, keep armhum lockup, use DETONATOR_TIMER_
     if (CountdownActive()) return;
     armed_ = false;
     SetMute(false);
+    SaberBase::SetVariation(0);
     Off();
   }
 
@@ -364,10 +362,7 @@ private:
   NextAction next_action_       = NEXT_ACTION_NOTHING;
   uint32_t time_base_           = 0;            // from original detonator.h
   uint32_t next_event_time_     = 0;            // from original detonator.h
-  //bool powered_               = true;         // from original detonator.h, but not used any more.
-  float len                     = 0.0f;         // countdown timer duration (in seconds)
   bool armed_                   = false;        // once armed_, it can go boom with clash
-
 
 }; // class DetonatorBCButtons
 
