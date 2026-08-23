@@ -137,6 +137,10 @@ public:
 	[[gnu::fallthrough]];
 
       case SwingState::ON:
+        // If the alt sound changed, switch A/B over as soon as each one
+        // is silent, instead of waiting for a full stop/restart.
+        A.CheckAlt();
+        B.CheckAlt();
         // trigger accent swing
         if (accent_swings_present && (A.isPlaying() || B.isPlaying())) {
           delegate_->StartSwing(gyro, smooth_swing_config.AccentSwingSpeedThreshold,
@@ -215,6 +219,8 @@ private:
       if (player) player->set_volume(v);
     }
     void Play(Effect* effect, float start = 0.0) {
+      effect_ = effect;
+      playing_alternative_ = current_alternative;
       if (!player) {
 	player = GetFreeWavPlayer();
 	if (!player) return;
@@ -222,6 +228,21 @@ private:
       player->set_volume(0.0f);
       player->PlayOnce(effect, start);
       player->PlayLoop(effect);
+    }
+    // If the alt sound has changed since we started playing, and we're
+    // currently silent, switch to the new alt now. This lets alt changes
+    // take effect at the next natural A<->B crossfade point instead of
+    // waiting up to 1s for the old repick delay.
+    void CheckAlt() {
+      if (player && effect_ && volume() == 0.0 &&
+          playing_alternative_ != current_alternative) {
+        effect_->Select(random(effect_->files_found()));
+        Play(effect_);
+      }
+    }
+    float volume() {
+      if (!player) return 0.0;
+      return player->volume();
     }
     bool isPlaying() {
       if (!player) return false;
@@ -257,6 +278,8 @@ private:
     float midpoint = 0.0;
     float width = 0.0;
     float separation = 0.0;
+    Effect* effect_ = nullptr;
+    int playing_alternative_ = current_alternative;
   };
   Data A;
   Data B;
