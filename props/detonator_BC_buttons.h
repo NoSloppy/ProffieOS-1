@@ -46,41 +46,38 @@ Optional sounds:
 ----------------
 font.wav
 quote.wav
-countdown.wav
+cntdown.wav
 
 Optional defines for your CONFIG_TOP section:
 ---------------------------------------------
-#define DETONATOR_TIMER_DURATION 6.0         // default is 6 seconds during delayed detonation.  (set timing in seconds)
+#define DETONATOR_TIMER_DURATION 6.0         // default is 6 seconds.
 #define SPOKEN_BATTERY_LEVEL                 // Use to have battery level spoken (uses Voicepack sound files) If not defined, High/Mid/Low LED meter only.
-#define DETONATOR_BUTTON_POWER_IS_MOMENTARY  // If your detonator pow button is NOT latching (it's momentary) and has been defined as such in your config.
 
+==========================================================================================================================================================
+==========================================================================================================================================================
 
 Button Controls:
-================
-
+----------------
 Latching POWER Button:
-  - Turn ON (starts disarmed)   - Latch ON
+  - Turn ON                     - Latch ON (starts disarmed)
   - Turn OFF                    - Latch OFF "He Agrees!"
-                                    If a countdown timer was started, it will continue until Detonation.
-Momentary POWER Button:
-  - Turn ON (starts disrmed)    - 1x Click while OFF
-  - Turn OFF                    - 1x Click while ON
                                     If a countdown timer was started, it will continue until Detonation.
 
 AUX Button:
-
-  - Toggle Mute                 - 3x Click and Hold (Unmutes on preset change or OFF/Detonation)
-  - Play Quote                  - 3x Click (plays quote.wav)
+  - Toggle Explosion Animation  - 4x Click and Hold at anytime (uses "enabled"/"disabled" voice sound)
+                                    Choose to show Detonation on LEDs or not, reagrdless of bladestyle having EFFECT_BOOM.
+  - Toggle Mute                 - 3x Click and Hold at anytime (Unmutes on preset change or OFF/Detonation)
+  - Play Quote                  - 3x Click at anytime (plays quote.wav)
   - Change Preset               - 2x Click or Twist when Disarmed (plays font.wav)
           Next Preset     - While Pointing UP
           Previous Preset - While Pointing DOWN
-          First Preset    - While NOT pointing UP or DOWN
-  - Spoken Battery Level        - 2x Click and Hold while Disarmed:
+          First Preset    - While NOT pointing UP or DOWN 
+  - Spoken Battery Level        - 2x Click and Hold while Disarmed (uses Voicepack/common sounds)
                                     Pointing UP   - Battery Level in percentage
                                     Pointing DOWN - Battery Level in volts
   - Start/Stop track            - Hold while Disarmed
 
-  - Arm                         - 1x Click while ON - or - Shake to ARM.(plays bgnarm.wav followed by armhum.wav)
+  - Arm                         - 1x Click while Disarmed - or - Shake(plays bgnarm.wav followed by armhum.wav)
   - Disarm                      - 2x Click or Twist while Armed (plays endarm.wav)
   - Detonate:                   - Hold while Armed to start Countdown Timer.
                                     This plays countdown.wav. The delay to Detonation is the sound file's duration.
@@ -88,6 +85,8 @@ AUX Button:
                                     If not defined, the default Coundown Timer duration is 6 seconds.
 
 Clash (while Armed)             - Instantly Detonate (interrupts any countdown), resets everything, turns the detonator OFF.
+
+Reset after Detonation          - To reset, toggle the POW button by closing and re-opening the Thumb Latch.
 =================================================================================================================================
 
 
@@ -106,7 +105,38 @@ Clash (while Armed)             - Instantly Detonate (interrupts any countdown),
 
 #define PROP_TYPE DetonatorBCButtons
 
-EFFECT(countdown);  // for optional Countdown Timer sound.If not in font, armhum plays straight through to Detonation.
+EFFECT(cntdown);  // for optional Countdown Timer sound.If not in font, armhum plays straight through to Detonation.
+EFFECT(mute);       // Notification before muted ignition to avoid confusion.
+
+class DelayTimer {
+public:
+  DelayTimer() : triggered_(false), trigger_time_(0), duration_(0) {}
+
+  void trigger(uint32_t duration) {
+    triggered_ = true;
+    trigger_time_ = millis();
+    duration_ = duration;
+  }
+
+  void stopTimer() {
+    PVLOG_DEBUG << "** Stopping timer.\n";
+    triggered_ = false;
+  }
+
+  bool isTimerExpired() {
+    if (!triggered_) return false;
+    if (millis() - trigger_time_ > duration_) {
+      stopTimer();
+      return true;  // Timer has elapsed
+    }
+    return false;  // Timer is still running
+  }
+
+private:
+  bool triggered_;
+  uint32_t trigger_time_;
+  uint32_t duration_;
+};
 
 class DetonatorBCButtons : public PROP_INHERIT_PREFIX PropBase {
 public:
@@ -119,6 +149,9 @@ public:
     NEXT_ACTION_BLOW,
   };
 
+  void Setup() {
+   sound_library_v2.init();
+  }
 
   void SetNextAction(NextAction what, float when_sec) {
     time_base_ = millis();
@@ -135,10 +168,17 @@ public:
           armed_ = true;
           break;
         case NEXT_ACTION_BLOW:
-          // Clear lockup first so OFF_BLAST doesn't emit endarm.
+          // Clear lockup first so OFF_BLAST doesn't play endarm.
           SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
           SaberBase::DoEndLockup();
+        if (show_detonation_) {
           Off(OFF_BLAST);
+        } else {
+          // Detonate and shut off with no EFFECT_BOOM, and no EFFECT_RETRACTION
+          hybrid_font.PlayMonophonic(&SFX_boom, NULL);
+          Off(OFF_IDLE);
+          PVLOG_NORMAL << "+++++ BOOM!! +++++\n";
+        }
           // Reset to idle smoothswings pair.
           ResetCurrentAlternative();
           armed_ = false;
@@ -155,6 +195,7 @@ public:
     // Switch from idle smoothswings to armed smoothswings.
     SaberBase::DoEffect(EFFECT_ALT_SOUND, 0.0, 1);
     SetNextAction(NEXT_ACTION_ARM, len);
+    PVLOG_NORMAL << "**** ARMED\n";
   }
 
   bool CountdownActive() const {
@@ -163,27 +204,28 @@ public:
 
   void Disarm() {
     armed_ = false;
+    SaberBase::DoEffect(EFFECT_USER2, 0);
     SaberBase::DoEndLockup();
     SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
     SaberBase::DoEffect(EFFECT_ALT_SOUND, 0.0, 0);
     SetNextAction(NEXT_ACTION_NOTHING, 0);
-    PVLOG_NORMAL << "**** Disarm\n";
+    PVLOG_NORMAL << "**** DISARMED\n";
   }
-
 
   void Detonate(float boom_delay = DETONATOR_TIMER_DURATION) {
     if (boom_delay > 0.0f) {
-      if (SFX_countdown) {
+      if (SFX_cntdown) {
 /* make this to be really sexy, and use pos() and compenssate for longer or shorter user defined durations.
 wav would be delayed from starting if DETONATOR_TIMER_DURATION is > 6seconds, and truncated from the front end of the wav if DETONATOR_TIMER_DURATION< 6 seconds. */
         // End LOCKUP_ARMED but skip playing endarm
         SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
         SaberBase::DoEndLockup();
-        hybrid_font.PlayMonophonic(&SFX_countdown, &SFX_hum);
+        hybrid_font.PlayMonophonic(&SFX_cntdown, &SFX_hum);
         boom_delay = hybrid_font.GetCurrentEffectLength();
       }
     }
-    // USER1 used in blade style for countdown timer blade effect. Use Variation in the EXPLODE_MILLIS slot to sync timing.
+    // USER1 used in blade style for countdown timer blade effect.
+    // Use Variation as the function to sync timing (TrDelayX<Variation>)
     SaberBase::SetVariation(boom_delay * 1000);
     SaberBase::DoEffect(EFFECT_USER1, 0);
     SetNextAction(NEXT_ACTION_BLOW, boom_delay);
@@ -196,10 +238,17 @@ wav would be delayed from starting if DETONATOR_TIMER_DURATION is > 6seconds, an
     PollNextAction();
     sound_library_.Poll(wav_player);
     if (wav_player && !wav_player->isPlaying()) wav_player.Free();
-  }
-
-  void Setup() {
-   sound_library_v2.init();
+    // Play optional mute.wav first.
+    if (mute_all_delay_timer_.isTimerExpired()) {
+      if (SetMute(true)) {
+        unmute_on_deactivation_ = true;
+        PVLOG_NORMAL << "**** MUTE\n";
+      } else {
+        SetMute(false);
+        unmute_on_deactivation_ = false;
+        PVLOG_NORMAL << "**** UNMUTE\n";
+      }
+    }
   }
 
   // Pull in parent's SetPreset, but turn the detonator on.
@@ -216,108 +265,13 @@ wav would be delayed from starting if DETONATOR_TIMER_DURATION is > 6seconds, an
   }
 
   void DetonatorOff() {
-    if (CountdownActive()) return;
+    // To avoid playing Disarm animation at Detonation,
+    // use EFFECT_RETRACTION instead of InOut in blade style.
+    if (CountdownActive()) { PVLOG_NORMAL << "**** TOO LATE!! RUN!!!\n"; return; }
     armed_ = false;
-    SetMute(false);
     SaberBase::SetVariation(0);
     Off();
   }
-
-  bool Event2(enum BUTTON button, EVENT event, uint32_t modifiers) override {
-    switch (EVENTID(button, event, modifiers)) {
-
-// Mute Toggle Anytime. Resets on preset change or OFF/BOOM)
-      case EVENTID(BUTTON_AUX, EVENT_THIRD_HELD_MEDIUM, MODE_ON):
-        if (!SetMute(true)) SetMute(false);
-PVLOG_NORMAL << "**** MUTE/UNMUTE\n";
-        return true;
-
-// TURN ON
-#ifndef DETONATOR_BUTTON_POWER_IS_MOMENTARY
-      case EVENTID(BUTTON_POWER, EVENT_LATCH_ON, MODE_OFF):
-#else
-      // This is for using this detonator without a latching button.
-      case EVENTID(BUTTON_POWER, EVENT_FIRST_SAVED_CLICK_SHORT, MODE_OFF):
-#endif
-        DetonatorOn();
-        return true;
-
-// TURN OFF
-#ifndef DETONATOR_BUTTON_POWER_IS_MOMENTARY
-      case EVENTID(BUTTON_POWER, EVENT_LATCH_OFF, MODE_ON):
-#else
-      // This is for using this detonator without a latching button.
-      case EVENTID(BUTTON_POWER, EVENT_FIRST_SAVED_CLICK_SHORT, MODE_ON):
-#endif
-        DetonatorOff();
-        return true;
-
-// Play Quote
-      case EVENTID(BUTTON_AUX, EVENT_THIRD_SAVED_CLICK_SHORT, MODE_ON):
-        if (SFX_quote) {
-          if (GetWavPlayerPlaying(&SFX_quote)) return false;  // Simple prevention of quote overlap
-          hybrid_font.PlayCommon(&SFX_quote);
-        }
-        return true;
-
-// Change Preset / Disarm
-      case EVENTID(BUTTON_AUX, EVENT_SECOND_SAVED_CLICK_SHORT, MODE_ON):
-      case EVENTID(BUTTON_NONE, EVENT_TWIST, MODE_ON):
-        if (CountdownActive()) return false;
-        if (armed_) {
-          Disarm();
-        } else {
-          SetMute(false);
-          FusorPreset();
-        }
-        return true;
-
-// Arm
-      case EVENTID(BUTTON_AUX, EVENT_FIRST_SAVED_CLICK_SHORT, MODE_ON):
-      case EVENTID(BUTTON_NONE, EVENT_SHAKE, MODE_ON):
-        if (!armed_) {
-          BeginArm();
-        }
-        return true;
-
-// Start Countdown Timer / Start Or Stop Track
-      case EVENTID(BUTTON_AUX, EVENT_FIRST_HELD_MEDIUM, MODE_ON):
-        if (CountdownActive()) return false;
-        if (armed_) {
-          PVLOG_NORMAL << "**** Start Countdown Timer\n";
-          Detonate();
-        } else {
-          StartOrStopTrack();
-        }
-        return true;
-
-// Clash to Boom (only if Armed)
-      case EVENTID(BUTTON_NONE, EVENT_CLASH, MODE_ON):
-      case EVENTID(BUTTON_NONE, EVENT_STAB, MODE_ON):
-        if (armed_) {
-          Detonate(0);
-        }
-        return true;
-
-// Battery Level
-#ifdef SPOKEN_BATTERY_LEVEL
-      case EVENTID(BUTTON_AUX, EVENT_SECOND_HELD_MEDIUM, MODE_ON):
-        if (!armed_) FusorBatteryLevel();
-        return true;
-#endif
-
-    }  // switch (EVENTID)
-    return false;
-  }  // Event2
-
-
-  void SB_Effect(EffectType effect, EffectLocation location) override {
-    switch (effect) {
-      default: return;
-    }  // switch (effect)
-  }  // SB_Effect
-
-  RefPtr<BufferedWavPlayer> wav_player;
 
   void FusorPreset() {
     if (fusor.angle1() > M_PI / 3) {
@@ -350,20 +304,115 @@ PVLOG_NORMAL << "**** MUTE/UNMUTE\n";
       sound_library_.SayNumber(battery_monitor.battery(), SAY_DECIMAL);
       sound_library_.SayVolts();
       PVLOG_NORMAL << "Battery Voltage: " << battery_monitor.battery() << "\n";
+      SaberBase::DoEffect(EFFECT_BATTERY_LEVEL, 0);
     } else {
       sound_library_.SayNumber(battery_monitor.battery_percent(), SAY_WHOLE);
       sound_library_.SayPercent();
       PVLOG_NORMAL << "Battery Percentage: " <<battery_monitor.battery_percent() << "%\n";
+      SaberBase::DoEffect(EFFECT_BATTERY_LEVEL, 0);
     }
   }
 
+  bool Event2(enum BUTTON button, EVENT event, uint32_t modifiers) override {
+    switch (EVENTID(button, event, modifiers)) {
+
+// Mute Toggle Anytime. Resets on preset change or OFF/BOOM)
+      case EVENTID(BUTTON_AUX, EVENT_THIRD_HELD_MEDIUM, MODE_ON):
+        if (hybrid_font.PlayPolyphonic(&SFX_mute)) {
+          mute_all_delay_timer_.trigger(SaberBase::sound_length * 1000);
+        } else {
+          mute_all_delay_timer_.trigger(0);
+        }
+        return true;
+
+// TURN ON
+      case EVENTID(BUTTON_POWER, EVENT_LATCH_ON, MODE_OFF):
+        DetonatorOn();
+        return true;
+
+// TURN OFF
+      case EVENTID(BUTTON_POWER, EVENT_LATCH_OFF, MODE_ON):
+        DetonatorOff();
+        return true;
+
+// Play Quote
+      case EVENTID(BUTTON_AUX, EVENT_THIRD_SAVED_CLICK_SHORT, MODE_ON):
+        if (SFX_quote) {
+          if (GetWavPlayerPlaying(&SFX_quote)) return false;  // Simple prevention of quote overlap
+          hybrid_font.PlayCommon(&SFX_quote);
+        }
+        return true;
+
+// Change Preset / Disarm
+      case EVENTID(BUTTON_AUX, EVENT_SECOND_SAVED_CLICK_SHORT, MODE_ON):
+      case EVENTID(BUTTON_NONE, EVENT_TWIST, MODE_ON):
+        if (CountdownActive()) { PVLOG_NORMAL << "**** TOO LATE!! RUN!!!\n"; return false; }
+        if (armed_) {
+          Disarm();
+        } else {
+          SetMute(false);
+          FusorPreset();
+        }
+        return true;
+
+// Arm
+      case EVENTID(BUTTON_AUX, EVENT_FIRST_SAVED_CLICK_SHORT, MODE_ON):
+      case EVENTID(BUTTON_NONE, EVENT_SHAKE, MODE_ON):
+        if (!armed_) {
+          BeginArm();
+        }
+        return true;
+
+// Start Countdown Timer / Start Or Stop Track
+      case EVENTID(BUTTON_AUX, EVENT_FIRST_HELD_MEDIUM, MODE_ON):
+        if (CountdownActive()) { PVLOG_NORMAL << "**** TOO LATE!! RUN!!!\n"; return false; }
+        if (armed_) {
+          PVLOG_NORMAL << "**** Start Countdown Timer\n";
+          Detonate();
+        } else {
+          StartOrStopTrack();
+        }
+        return true;
+
+// Clash to Boom (only if Armed)
+      case EVENTID(BUTTON_NONE, EVENT_CLASH, MODE_ON):
+      case EVENTID(BUTTON_NONE, EVENT_STAB, MODE_ON):
+        if (armed_) {
+          Detonate(0);
+        }
+        return true;
+
+// Battery Level
+#ifdef SPOKEN_BATTERY_LEVEL
+      case EVENTID(BUTTON_AUX, EVENT_SECOND_HELD_MEDIUM, MODE_ON):
+        if (!armed_) FusorBatteryLevel();
+        return true;
+#endif
+
+// Toggle Explosion Animation
+      case EVENTID(BUTTON_AUX, EVENT_FOURTH_HELD_MEDIUM, MODE_ON):
+        show_detonation_ = !show_detonation_;
+        if (SFX_mnum) {
+          show_detonation_ ? sound_library_v2.SayEnabled() : sound_library_.SayDisabled();
+          PVLOG_NORMAL << "+++++ " << (show_detonation_ ? "" : "DON'T ") << "show_detonation_\n";
+        } else {
+          beeper.Beep(0.5, show_detonation_ ? 3000 : 1000);
+        }
+        return true;
+
+    }  // switch (EVENTID)
+    return false;
+  }  // Event2
+
+    RefPtr<BufferedWavPlayer> wav_player;
+
 private:
-  // State variables
+  DelayTimer mute_all_delay_timer_;
   NextAction next_action_       = NEXT_ACTION_NOTHING;
   uint32_t time_base_           = 0;            // from original detonator.h
   uint32_t next_event_time_     = 0;            // from original detonator.h
   bool armed_                   = false;        // once armed_, it can go boom with clash
-
+  bool show_detonation_ = true;
 }; // class DetonatorBCButtons
 
 #endif // PROPS_DETONATOR_BC_BUTTONS_H
