@@ -9,6 +9,11 @@ class SmoothSwingV2 : public SaberBasePassThrough {
 public:
   SmoothSwingV2() : SaberBasePassThrough() {}
 
+  // Volume level (0.0 - 1.0) below which a player is considered "silent"
+  // for the purposes of applying a pending alt-sound switch without an
+  // audible pop.
+  static constexpr float kAltSwitchSilenceThreshold = 0.01f;
+
   void Activate(SaberBase* base_font) {
     STDOUT.println("Activating SmoothSwing V2");
     if (SFX_swingl) {
@@ -98,6 +103,21 @@ public:
     delegate_->SB_Off(off_type, location);
   }
 
+  void SB_Effect(EffectType effect, EffectLocation location) override {
+    delegate_->SB_Effect(effect, location);
+    if (effect == EFFECT_ALT_SOUND && on_) {
+      // Don't switch immediately: whichever of A/B currently has non-zero
+      // volume would produce an audible pop if its content were replaced
+      // out from under it. Instead, flag both for a switch and let
+      // CheckAlt() (called every tick) apply each one only once it's
+      // actually silent (mixed out to ~0), which happens at least once per
+      // A<->B crossfade even during continuous motion. The other side then
+      // gets its turn once the crossfade completes and roles reverse.
+      A.alt_pending_ = true;
+      B.alt_pending_ = true;
+    }
+  }
+
   enum class SwingState {
     OFF, // waiting for swing to start
     ON,  // swinging
@@ -137,8 +157,10 @@ public:
 	[[gnu::fallthrough]];
 
       case SwingState::ON:
-        // If the alt sound changed, switch A/B over as soon as each one
-        // is silent, instead of waiting for a full stop/restart.
+        // If an alt-sound switch is pending, apply it to whichever of A/B
+        // is currently silent (safe to change without a pop). The other
+        // one gets switched on its own next silent moment, once the
+        // crossfade has carried it down to ~0.
         A.CheckAlt();
         B.CheckAlt();
         // trigger accent swing
@@ -220,7 +242,6 @@ private:
     }
     void Play(Effect* effect, float start = 0.0) {
       effect_ = effect;
-      playing_alternative_ = current_alternative;
       if (!player) {
 	player = GetFreeWavPlayer();
 	if (!player) return;
@@ -229,15 +250,23 @@ private:
       player->PlayOnce(effect, start);
       player->PlayLoop(effect);
     }
-    // If the alt sound has changed since we started playing, and we're
-    // currently silent, switch to the new alt now. This lets alt changes
-    // take effect at the next natural A<->B crossfade point instead of
-    // waiting up to 1s for the old repick delay.
+    // Restart this player's audio content in place. Only safe to call
+    // once the player has actually faded down to (near) silent, which
+    // CheckAlt() enforces.
+    void SwitchAlt() {
+      if (!player || !effect_) return;
+      effect_->Select(random(effect_->files_found()));
+      Play(effect_);
+    }
+    // If an alt-sound switch is pending for this player, apply it as soon
+    // as this player's volume has faded down close to zero. Using a small
+    // threshold (rather than requiring an exact 0.0) avoids missing the
+    // silent window due to volume-ramp smoothing never landing on exactly
+    // zero.
     void CheckAlt() {
-      if (player && effect_ && volume() == 0.0 &&
-          playing_alternative_ != current_alternative) {
-        effect_->Select(random(effect_->files_found()));
-        Play(effect_);
+      if (alt_pending_ && player && effect_ && volume() <= kAltSwitchSilenceThreshold) {
+        SwitchAlt();
+        alt_pending_ = false;
       }
     }
     float volume() {
@@ -279,7 +308,7 @@ private:
     float width = 0.0;
     float separation = 0.0;
     Effect* effect_ = nullptr;
-    int playing_alternative_ = current_alternative;
+    bool alt_pending_ = false;
   };
   Data A;
   Data B;
