@@ -264,7 +264,8 @@ private:
     // silent window due to volume-ramp smoothing never landing on exactly
     // zero.
     void CheckAlt() {
-      if (alt_pending_ && player && effect_ && volume() <= kAltSwitchSilenceThreshold) {
+      if (alt_pending_ && player && effect_ &&
+          volume() <= SmoothSwingV2::kAltSwitchSilenceThreshold) {
         SwitchAlt();
         alt_pending_ = false;
       }
