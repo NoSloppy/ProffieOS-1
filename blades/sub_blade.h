@@ -30,8 +30,18 @@ Like SubBlade, but LEDs are indexed with an additional 'stride' parameter,
 allowing you to "skip" over a regular number of pixels in the data chain. (Such as every other one)
 
 Usage: SubBladeWithList<int1, int2, ...>(blade_definition)
+Also known as: SubBladeWithSparseList<int1, int2, ...>(blade_definition)
 Like SubBlade, but you provide a custom list of LED indices instead of a range.
 Useful for ring-based or irregular LED layouts.
+Only the LEDs in the list are handed to the style, and any LED of the underlying
+blade which isn't used by some sub-blade is turned off automatically, so there is
+no need to make a "dummy" sub-blade to account for the LEDs you don't care about.
+For example, to only address LED 20, 35 and 50 of a 95 LED string:
+{ 0,
+  SubBladeWithList<19, 34, 49>(WS281XBladePtr<95, bladePin, Color8::GRB, PowerPINS<bladePowerPin2, bladePowerPin3> >() ),
+  CONFIGARRAY(presets) }
+NUM_BLADES is 1 in this example, and the style sees a blade with three LEDs.
+Note that LED addresses start at zero, so LED 20 is index 19.
 
 For more in-depth explanations, see the SubBlade Wiki pages here:
 https://github.com/profezzorn/ProffieOS/wiki/SubBlade
@@ -75,6 +85,18 @@ public:
 
   bool primary() const {
     return primary_;
+  }
+
+  // Returns true if any sub-blade in this chain only addresses some of the
+  // LEDs in the underlying blade, which means that the LEDs that no
+  // sub-blade writes to must be blanked out before the styles run.
+  bool SomeSubBladeIsSparse() {
+    SubBladeWrapper* tmp = this;
+    do {
+      if (tmp->sparse_) return true;
+      tmp = tmp->next_;
+    } while (tmp != this);
+    return false;
   }
 
   void clear() override {
@@ -126,6 +148,11 @@ public:
   virtual void run(BladeBase* blade) override {
     SubBladeWrapper* tmp = this;
     bool allow_disable = true;
+    // Sub-blades made with SubBladeWithList<> only write to the LEDs in the
+    // list, so start the frame by turning the whole blade off. That way LEDs
+    // which aren't part of any sub-blade end up dark instead of showing
+    // whatever happened to be in the frame buffer already.
+    if (SomeSubBladeIsSparse()) blade_->clear();
     do {
       tmp->allow_disable_ = false;
       if (tmp->current_style_)
@@ -162,6 +189,7 @@ protected:
   SubBladeWrapper* next_;
   int blade_number_;
   bool primary_ = false;
+  bool sparse_ = false;
 };
 
 SubBladeWrapper* first_subblade_wrapper = NULL;
@@ -316,7 +344,9 @@ class BladeBase* SubBladeZZ(int first_led, int last_led, int stride, int column,
 class SubBladeWrapperWithList : public SubBladeWrapper {
 public:
   SubBladeWrapperWithList(const int* indices, int count)
-      : indices_(indices), count_(count) {}
+      : indices_(indices), count_(count) {
+    sparse_ = true;
+  }
   void set(int led, Color16 c) override {
     if (led >= 0 && led < count_ && indices_[led] >= 0) {
       blade_->set(indices_[led], c);
@@ -343,6 +373,11 @@ BladeBase* SubBladeWithList(const int* indices, int count, BladeBase* blade) {
     blade = first_subblade_wrapper->blade_;
   }
 
+  // Negative indices are allowed, they just mean that the LED goes nowhere.
+  for (int i = 0; i < count; i++) {
+    if (indices[i] >= blade->num_leds()) return NULL;
+  }
+
   SubBladeWrapperWithList* ret = new SubBladeWrapperWithList(indices, count);
 
   if (first_subblade_wrapper) {
@@ -363,6 +398,13 @@ template <int... Indices>
 BladeBase* SubBladeWithList(BladeBase* blade) {
   static const int arr[sizeof...(Indices)] = { Indices... };
   return SubBladeWithList(arr, sizeof...(Indices), blade);
+}
+
+// Same thing, but the name makes it clear that the LEDs which are not
+// in the list are turned off rather than left alone.
+template <int... Indices>
+BladeBase* SubBladeWithSparseList(BladeBase* blade) {
+  return SubBladeWithList<Indices...>(blade);
 }
 
 class BarBackWrapper : public SubBladeWrapper {
