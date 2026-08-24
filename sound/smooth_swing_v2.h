@@ -76,6 +76,8 @@ public:
     H->Select(swing);
     A.Play(L, start);
     B.Play(H, start);
+    // Both players just started using the current alternative.
+    A.alt_pending_ = B.alt_pending_ = false;
     if (random(2)) Swap();
     float t1_offset = random(1000) / 1000.0 * 50 + 10;
     A.SetTransition(t1_offset, smooth_swing_config.Transition1Degrees);
@@ -92,6 +94,7 @@ public:
   void SB_Off(OffType off_type, EffectLocation location) override {
     if (location.on_blade(0)) {
       on_ = false;
+      A.alt_pending_ = B.alt_pending_ = false;
       A.Off();
       B.Off();
     }
@@ -100,52 +103,14 @@ public:
 
   void SB_Effect(EffectType effect, EffectLocation location) override {
     delegate_->SB_Effect(effect, location);
-    if (effect == EFFECT_ALT_SOUND) {
-      PVLOG_NORMAL << "SmoothSwingV2: EFFECT_ALT_SOUND received, on_=" << on_
-                   << " current_alternative=" << current_alternative
-                   << " L_alts=" << (L ? (int)L->number_of_alternatives() : -1)
-                   << " H_alts=" << (H ? (int)H->number_of_alternatives() : -1) << "\n";
-      if (on_ && L && H &&
-          (L->number_of_alternatives() > 1 || H->number_of_alternatives() > 1)) {
-        // Don't switch content right here: doing so out from under whichever
-        // of A/B is currently at non-zero volume would produce an audible
-        // pop. Instead, flag the switch and apply it at the very next A<->B
-        // swap (see SB_Motion below), which happens as soon as the
-        // transition that's currently in progress finishes. That bounds the
-        // delay to at most the remainder of that one transition, instead of
-        // waiting for a full stop or for a lucky near-silent sample.
-        alt_switch_pending_ = true;
-        PVLOG_NORMAL << "SmoothSwingV2: alt_switch_pending_ set to true\n";
-      } else {
-        PVLOG_NORMAL << "SmoothSwingV2: alt_switch_pending_ NOT set (guard failed)\n";
-      }
+    if (effect == EFFECT_ALT_SOUND && on_ && L && H &&
+        (L->number_of_alternatives() > 1 || H->number_of_alternatives() > 1)) {
+      // Don't switch the sounds right here: at least one of A/B is normally
+      // audible, and restarting an audible player cuts its sound short.
+      // Flag both players instead; SB_Motion switches each one as soon as
+      // that particular player falls silent, which makes it inaudible.
+      A.alt_pending_ = B.alt_pending_ = true;
     }
-  }
-
-  // Immediately replace A & B's sound content with a new (paired) swing
-  // selection, without touching their current volume/crossfade state. Since
-  // BufferedWavPlayer::PlayOnce() sets the volume to the already-established
-  // target level rather than to zero, the ongoing crossfade continues
-  // exactly where it left off - only the underlying sound changes.
-  void SwitchSwingAlt() {
-    if (!on_ || !A.player || !B.player) {
-      PVLOG_NORMAL << "SmoothSwingV2::SwitchSwingAlt: aborting, on_=" << on_
-                   << " A.player=" << (bool)A.player
-                   << " B.player=" << (bool)B.player << "\n";
-      return;
-    }
-    uint32_t m = millis();
-    RefPtr<BufferedWavPlayer> humplayer = GetWavPlayerPlaying(hybrid_font.getHum());
-    float start = (!humplayer || font_config.ProffieOSSmoothSwingHumstart == 0) ?
-      m / 1000.0 : humplayer->pos();
-    int swing = random(L->files_found());
-    L->Select(swing);
-    H->Select(swing);
-    A.RestartInPlace(start);
-    B.RestartInPlace(start);
-    PVLOG_NORMAL << "SmoothSwingV2::SwitchSwingAlt: applied alt=" << current_alternative
-                 << " swing_index=" << swing
-                 << " A.vol=" << A.volume() << " B.vol=" << B.volume() << "\n";
   }
 
   enum class SwingState {
@@ -168,6 +133,17 @@ public:
     if (delta > 1000000) delta = 1;
     last_micros_ = t;
     float hum_volume = 1.0;
+
+    // Apply a pending alt-sound switch to A and B individually, each one as
+    // soon as that player is silent. There are long stretches where one of
+    // them sits at zero volume while the other one carries the sound, so
+    // switching them one at a time is inaudible. Whichever player is silent
+    // first switches immediately; the other one follows when the crossfade
+    // that is currently in progress hands the sound over to it.
+    if (on_) {
+      if (A.alt_pending_ && A.isOff()) A.SwitchAlt();
+      if (B.alt_pending_ && B.isOff()) B.SwitchAlt();
+    }
 
     switch (state_) {
       case SwingState::OFF:
@@ -199,24 +175,9 @@ public:
           // If the current transition is done, switch A & B,
           // and set the next transition to be 180 (or 'separation') degrees from the one
           // that is done.
-          bool swapped = false;
           while (A.end() < 0.0) {
             B.midpoint = A.midpoint + A.separation;
 	    Swap();
-            swapped = true;
-          }
-          // Apply a pending alt-sound switch right at this A<->B swap: it's
-          // the earliest point where changing content won't cut off a
-          // transition in progress. This bounds the alt-switch delay to, at
-          // most, however long is left of the currently playing transition.
-          if (swapped) {
-            if (alt_switch_pending_) {
-              PVLOG_NORMAL << "SmoothSwingV2: A<->B swap occurred with alt switch pending, applying now\n";
-              alt_switch_pending_ = false;
-              SwitchSwingAlt();
-            } else {
-              PVLOG_DEBUG << "SmoothSwingV2: A<->B swap occurred, no alt switch pending\n";
-            }
           }
           float mixab = 0.0;
           if (A.begin() < 0.0)
@@ -289,19 +250,22 @@ private:
       player->PlayOnce(effect, start);
       player->PlayLoop(effect);
     }
-    // Restart this player's audio content in place, without resetting its
-    // volume to zero (unlike Play()). BufferedWavPlayer::PlayOnce() sets
-    // the current volume to the already-established target level, so any
-    // crossfade in progress continues undisturbed - only the sound content
-    // changes.
-    void RestartInPlace(float start) {
+    // Switch this player over to the currently selected alternative.
+    // Only safe to call while this player is silent, since restarting the
+    // reader cuts whatever it is playing off instantly.
+    void SwitchAlt() {
+      alt_pending_ = false;
       if (!player || !effect_) return;
-      player->PlayOnce(effect_, start);
+      // Resume at the same point in the sound, so that this player stays in
+      // sync with the other one (and with the hum).
+      float pos = player->pos();
+      // PlayWav's reader is a coroutine parked in the middle of the file it
+      // is streaming, and it won't look at a new PlayOnce() request until
+      // that file runs out. Stopping it first is what makes the switch
+      // actually take effect. Stop() preserves the target volume.
+      player->Stop();
+      player->PlayOnce(effect_, pos);
       player->PlayLoop(effect_);
-    }
-    float volume() {
-      if (!player) return 0.0;
-      return player->volume();
     }
     bool isPlaying() {
       if (!player) return false;
@@ -338,13 +302,16 @@ private:
     float width = 0.0;
     float separation = 0.0;
     Effect* effect_ = nullptr;
+    // Set when an alt-sound switch has been requested but this player was
+    // still audible. Lives in Data so that it follows its own player through
+    // Swap().
+    bool alt_pending_ = false;
   };
   Data A;
   Data B;
 
   uint32_t last_random_ = 0;
   bool on_ = false;;
-  bool alt_switch_pending_ = false;
   bool accent_swings_present = false;
   bool accent_slashes_present = false;
   BoxFilter<Vec3, 3> gyro_filter_;
