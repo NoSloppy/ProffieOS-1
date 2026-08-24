@@ -76,6 +76,9 @@ public:
     H->Select(swing);
     A.Play(L, start);
     B.Play(H, start);
+    // Both players just started using the current alternative.
+    A.alt_pending_ = false;
+    B.alt_pending_ = false;
     if (random(2)) Swap();
     float t1_offset = random(1000) / 1000.0 * 50 + 10;
     A.SetTransition(t1_offset, smooth_swing_config.Transition1Degrees);
@@ -92,6 +95,8 @@ public:
   void SB_Off(OffType off_type, EffectLocation location) override {
     if (location.on_blade(0)) {
       on_ = false;
+      A.alt_pending_ = false;
+      B.alt_pending_ = false;
       A.Off();
       B.Off();
     }
@@ -100,8 +105,10 @@ public:
 
   void SB_Effect(EffectType effect, EffectLocation location) override {
     delegate_->SB_Effect(effect, location);
-    if (effect == EFFECT_ALT_SOUND && on_) {
-      alt_switch_pending_ = true;  // flip at the next A<->B transition
+    if (effect == EFFECT_ALT_SOUND && on_ && L && H &&
+       (L->number_of_alternatives() > 1 || H->number_of_alternatives() > 1)) {
+      A.alt_pending_ = true;
+      B.alt_pending_ = true;
     }
   }
 
@@ -125,12 +132,18 @@ public:
     if (delta > 1000000) delta = 1;
     last_micros_ = t;
     float hum_volume = 1.0;
+    // Whichever player is silent first switches,
+    // then the other follows when the crossfade happens.
+    if (on_) {
+      if (A.alt_pending_ && A.isOff()) A.SwitchAlt();
+      if (B.alt_pending_ && B.isOff()) B.SwitchAlt();
+    }
 
     switch (state_) {
       case SwingState::OFF:
-        if (!A.player || !B.player) {
-          PickRandomSwing();
-        }
+  if (!A.player || !B.player) {
+    PickRandomSwing();
+  }
         if (speed < smooth_swing_config.SwingStrengthThreshold) {
 #if 1
           if (monitor.ShouldPrint(Monitoring::MonitorSwings)) {
@@ -141,7 +154,7 @@ public:
           break;
         }
         state_ = SwingState::ON;
-        [[gnu::fallthrough]];
+  [[gnu::fallthrough]];
 
       case SwingState::ON:
         // trigger accent swing
@@ -156,18 +169,9 @@ public:
           // If the current transition is done, switch A & B,
           // and set the next transition to be 180 (or 'separation') degrees from the one
           // that is done.
-          // Also handle faster swapping when Alt is switched.
-          bool swapped = false;
           while (A.end() < 0.0) {
             B.midpoint = A.midpoint + A.separation;
-            Swap();
-            swapped = true;
-          }
-          if (swapped && alt_switch_pending_) {
-            alt_switch_pending_ = false;
-            // bypass the 1000ms repick delay
-            last_random_ = 0;
-            PickRandomSwing();
+      Swap();
           }
           float mixab = 0.0;
           if (A.begin() < 0.0)
@@ -210,7 +214,7 @@ public:
         A.set_volume(0);
         B.set_volume(0);
         state_ = SwingState::OUT;
-        [[gnu::fallthrough]];
+  [[gnu::fallthrough]];
 
       case SwingState::OUT:
         if (!A.isOff() || !B.isOff()) {
@@ -231,13 +235,25 @@ private:
       if (player) player->set_volume(v);
     }
     void Play(Effect* effect, float start = 0.0) {
+      effect_ = effect;
       if (!player) {
-        player = GetFreeWavPlayer();
-        if (!player) return;
+  player = GetFreeWavPlayer();
+  if (!player) return;
       }
       player->set_volume(0.0f);
       player->PlayOnce(effect, start);
       player->PlayLoop(effect);
+    }
+    // Switch to the currently selected alternative.
+    void SwitchAlt() {
+      alt_pending_ = false;
+      if (!player || !effect_) return;
+      // Resume at the same point in the sound.
+      float pos = player->pos();
+      // Stop() keeps the target volume.
+      player->Stop();
+      player->PlayOnce(effect_, pos);
+      player->PlayLoop(effect_);
     }
     bool isPlaying() {
       if (!player) return false;
@@ -273,11 +289,12 @@ private:
     float midpoint = 0.0;
     float width = 0.0;
     float separation = 0.0;
+    Effect* effect_ = nullptr;
+    bool alt_pending_ = false;
   };
   Data A;
   Data B;
 
-  bool alt_switch_pending_ = false;
   uint32_t last_random_ = 0;
   bool on_ = false;;
   bool accent_swings_present = false;
