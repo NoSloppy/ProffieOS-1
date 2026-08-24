@@ -100,16 +100,25 @@ public:
 
   void SB_Effect(EffectType effect, EffectLocation location) override {
     delegate_->SB_Effect(effect, location);
-    if (effect == EFFECT_ALT_SOUND && on_ && L && H &&
-        (L->number_of_alternatives() > 1 || H->number_of_alternatives() > 1)) {
-      // Don't switch content right here: doing so out from under whichever
-      // of A/B is currently at non-zero volume would produce an audible
-      // pop. Instead, flag the switch and apply it at the very next A<->B
-      // swap (see SB_Motion below), which happens as soon as the
-      // transition that's currently in progress finishes. That bounds the
-      // delay to at most the remainder of that one transition, instead of
-      // waiting for a full stop or for a lucky near-silent sample.
-      alt_switch_pending_ = true;
+    if (effect == EFFECT_ALT_SOUND) {
+      PVLOG_NORMAL << "SmoothSwingV2: EFFECT_ALT_SOUND received, on_=" << on_
+                   << " current_alternative=" << current_alternative
+                   << " L_alts=" << (L ? (int)L->number_of_alternatives() : -1)
+                   << " H_alts=" << (H ? (int)H->number_of_alternatives() : -1) << "\n";
+      if (on_ && L && H &&
+          (L->number_of_alternatives() > 1 || H->number_of_alternatives() > 1)) {
+        // Don't switch content right here: doing so out from under whichever
+        // of A/B is currently at non-zero volume would produce an audible
+        // pop. Instead, flag the switch and apply it at the very next A<->B
+        // swap (see SB_Motion below), which happens as soon as the
+        // transition that's currently in progress finishes. That bounds the
+        // delay to at most the remainder of that one transition, instead of
+        // waiting for a full stop or for a lucky near-silent sample.
+        alt_switch_pending_ = true;
+        PVLOG_NORMAL << "SmoothSwingV2: alt_switch_pending_ set to true\n";
+      } else {
+        PVLOG_NORMAL << "SmoothSwingV2: alt_switch_pending_ NOT set (guard failed)\n";
+      }
     }
   }
 
@@ -119,7 +128,12 @@ public:
   // target level rather than to zero, the ongoing crossfade continues
   // exactly where it left off - only the underlying sound changes.
   void SwitchSwingAlt() {
-    if (!on_ || !A.player || !B.player) return;
+    if (!on_ || !A.player || !B.player) {
+      PVLOG_NORMAL << "SmoothSwingV2::SwitchSwingAlt: aborting, on_=" << on_
+                   << " A.player=" << (bool)A.player
+                   << " B.player=" << (bool)B.player << "\n";
+      return;
+    }
     uint32_t m = millis();
     RefPtr<BufferedWavPlayer> humplayer = GetWavPlayerPlaying(hybrid_font.getHum());
     float start = (!humplayer || font_config.ProffieOSSmoothSwingHumstart == 0) ?
@@ -129,6 +143,9 @@ public:
     H->Select(swing);
     A.RestartInPlace(start);
     B.RestartInPlace(start);
+    PVLOG_NORMAL << "SmoothSwingV2::SwitchSwingAlt: applied alt=" << current_alternative
+                 << " swing_index=" << swing
+                 << " A.vol=" << A.volume() << " B.vol=" << B.volume() << "\n";
   }
 
   enum class SwingState {
@@ -192,9 +209,14 @@ public:
           // the earliest point where changing content won't cut off a
           // transition in progress. This bounds the alt-switch delay to, at
           // most, however long is left of the currently playing transition.
-          if (swapped && alt_switch_pending_) {
-            alt_switch_pending_ = false;
-            SwitchSwingAlt();
+          if (swapped) {
+            if (alt_switch_pending_) {
+              PVLOG_NORMAL << "SmoothSwingV2: A<->B swap occurred with alt switch pending, applying now\n";
+              alt_switch_pending_ = false;
+              SwitchSwingAlt();
+            } else {
+              PVLOG_DEBUG << "SmoothSwingV2: A<->B swap occurred, no alt switch pending\n";
+            }
           }
           float mixab = 0.0;
           if (A.begin() < 0.0)
