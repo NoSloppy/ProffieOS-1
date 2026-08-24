@@ -30,12 +30,14 @@ Like SubBlade, but LEDs are indexed with an additional 'stride' parameter,
 allowing you to "skip" over a regular number of pixels in the data chain. (Such as every other one)
 
 Usage: SubBladeWithList<int1, int2, ...>(blade_definition)
-Also known as: SubBladeWithSparseList<int1, int2, ...>(blade_definition)
 Like SubBlade, but you provide a custom list of LED indices instead of a range.
 Useful for ring-based or irregular LED layouts.
-Only the LEDs in the list are handed to the style, and any LED of the underlying
-blade which isn't used by some sub-blade is turned off automatically, so there is
-no need to make a "dummy" sub-blade to account for the LEDs you don't care about.
+The style only sees the LEDs in the list, and every LED of the underlying blade
+which isn't listed in some sub-blade is turned off for you at the start of each
+frame. That means you do NOT have to list all the LEDs you don't want in an extra
+"dummy" sub-blade (with a black style and a bumped-up NUM_BLADES) just to keep
+them dark. Making such a dummy sub-blade still works if you want to control those
+LEDs, it's just no longer required.
 For example, to only address LED 20, 35 and 50 of a 95 LED string:
 { 0,
   SubBladeWithList<19, 34, 49>(WS281XBladePtr<95, bladePin, Color8::GRB, PowerPINS<bladePowerPin2, bladePowerPin3> >() ),
@@ -395,13 +397,6 @@ template <int... Indices>
 BladeBase* SubBladeWithList(BladeBase* blade) {
   static const int arr[sizeof...(Indices)] = { Indices... };
   return SubBladeWithList(arr, sizeof...(Indices), blade);
-}
-
-// Same thing, but the name makes it clear that the LEDs which are not
-// in the list are turned off rather than left alone.
-template <int... Indices>
-BladeBase* SubBladeWithSparseList(BladeBase* blade) {
-  return SubBladeWithList<Indices...>(blade);
 }
 
 class BarBackWrapper : public SubBladeWrapper {
