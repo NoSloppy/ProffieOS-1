@@ -87,16 +87,12 @@ public:
     return primary_;
   }
 
-  // Returns true if any sub-blade in this chain only addresses some of the
-  // LEDs in the underlying blade, which means that the LEDs that no
-  // sub-blade writes to must be blanked out before the styles run.
-  bool SomeSubBladeIsSparse() {
-    SubBladeWrapper* tmp = this;
-    do {
-      if (tmp->sparse_) return true;
-      tmp = tmp->next_;
-    } while (tmp != this);
-    return false;
+  // Sub-blades made with SubBladeWithList<> only write to the LEDs in their
+  // list, so any LED which isn't part of some sub-blade has to be turned off
+  // explicitly. This is set on the primary sub-blade, which is the one that
+  // runs all the styles in the chain.
+  void SetBlankUnusedLeds() {
+    blank_unused_leds_ = true;
   }
 
   void clear() override {
@@ -148,11 +144,11 @@ public:
   virtual void run(BladeBase* blade) override {
     SubBladeWrapper* tmp = this;
     bool allow_disable = true;
-    // Sub-blades made with SubBladeWithList<> only write to the LEDs in the
-    // list, so start the frame by turning the whole blade off. That way LEDs
-    // which aren't part of any sub-blade end up dark instead of showing
-    // whatever happened to be in the frame buffer already.
-    if (SomeSubBladeIsSparse()) blade_->clear();
+    // Start the frame by turning the whole blade off if some sub-blade only
+    // addresses a few of the LEDs. That way the LEDs which aren't part of any
+    // sub-blade end up dark instead of showing whatever happened to be in the
+    // frame buffer already.
+    if (blank_unused_leds_) blade_->clear();
     do {
       tmp->allow_disable_ = false;
       if (tmp->current_style_)
@@ -189,7 +185,7 @@ protected:
   SubBladeWrapper* next_;
   int blade_number_;
   bool primary_ = false;
-  bool sparse_ = false;
+  bool blank_unused_leds_ = false;
 };
 
 SubBladeWrapper* first_subblade_wrapper = NULL;
@@ -344,9 +340,7 @@ class BladeBase* SubBladeZZ(int first_led, int last_led, int stride, int column,
 class SubBladeWrapperWithList : public SubBladeWrapper {
 public:
   SubBladeWrapperWithList(const int* indices, int count)
-      : indices_(indices), count_(count) {
-    sparse_ = true;
-  }
+      : indices_(indices), count_(count) {}
   void set(int led, Color16 c) override {
     if (led >= 0 && led < count_ && indices_[led] >= 0) {
       blade_->set(indices_[led], c);
@@ -390,6 +384,9 @@ BladeBase* SubBladeWithList(const int* indices, int count, BladeBase* blade) {
   }
 
   ret->SetupSubBlade(blade, 0, count);
+  // first_subblade_wrapper is the primary sub-blade of this chain, and the
+  // one which gets to blank out the LEDs that this list doesn't cover.
+  first_subblade_wrapper->SetBlankUnusedLeds();
   return ret;
 }
 
