@@ -105,8 +105,8 @@ Reset after Detonation          - To reset, toggle the POW button by closing and
 
 #define PROP_TYPE DetonatorBCButtons
 
-EFFECT(cntdown);  // for optional Countdown Timer sound.If not in font, armhum plays straight through to Detonation.
-EFFECT(mute);       // Notification before muted ignition to avoid confusion.
+EFFECT(cntdown);  // for optional Countdown Timer sound. If not in font, armhum plays straight through to Detonation.
+EFFECT(mute);     // Notification before muted ignition to avoid confusion.
 
 class DelayTimer {
 public:
@@ -215,7 +215,7 @@ public:
   void Detonate(float boom_delay = DETONATOR_TIMER_DURATION) {
     if (boom_delay > 0.0f) {
       if (SFX_cntdown) {
-/* make this to be really sexy, and use pos() and compenssate for longer or shorter user defined durations.
+/* make this to be really sexy, and use pos() and compensate for longer or shorter user defined durations.
 wav would be delayed from starting if DETONATOR_TIMER_DURATION is > 6seconds, and truncated from the front end of the wav if DETONATOR_TIMER_DURATION< 6 seconds. */
         // End LOCKUP_ARMED but skip playing endarm
         SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
