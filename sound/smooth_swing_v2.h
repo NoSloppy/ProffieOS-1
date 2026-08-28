@@ -77,7 +77,8 @@ public:
     A.Play(L, start);
     B.Play(H, start);
     // Both players just started using the current alternative.
-    A.alt_pending_ = B.alt_pending_ = false;
+    A.alt_pending_ = false;
+    B.alt_pending_ = false;
     if (random(2)) Swap();
     float t1_offset = random(1000) / 1000.0 * 50 + 10;
     A.SetTransition(t1_offset, smooth_swing_config.Transition1Degrees);
@@ -94,7 +95,8 @@ public:
   void SB_Off(OffType off_type, EffectLocation location) override {
     if (location.on_blade(0)) {
       on_ = false;
-      A.alt_pending_ = B.alt_pending_ = false;
+      A.alt_pending_ = false;
+      B.alt_pending_ = false;
       A.Off();
       B.Off();
     }
@@ -104,12 +106,9 @@ public:
   void SB_Effect(EffectType effect, EffectLocation location) override {
     delegate_->SB_Effect(effect, location);
     if (effect == EFFECT_ALT_SOUND && on_ && L && H &&
-        (L->number_of_alternatives() > 1 || H->number_of_alternatives() > 1)) {
-      // Don't switch the sounds right here: at least one of A/B is normally
-      // audible, and restarting an audible player cuts its sound short.
-      // Flag both players instead; SB_Motion switches each one as soon as
-      // that particular player falls silent, which makes it inaudible.
-      A.alt_pending_ = B.alt_pending_ = true;
+       (L->number_of_alternatives() > 1 || H->number_of_alternatives() > 1)) {
+      A.alt_pending_ = true;
+      B.alt_pending_ = true;
     }
   }
 
@@ -133,13 +132,8 @@ public:
     if (delta > 1000000) delta = 1;
     last_micros_ = t;
     float hum_volume = 1.0;
-
-    // Apply a pending alt-sound switch to A and B individually, each one as
-    // soon as that player is silent. There are long stretches where one of
-    // them sits at zero volume while the other one carries the sound, so
-    // switching them one at a time is inaudible. Whichever player is silent
-    // first switches immediately; the other one follows when the crossfade
-    // that is currently in progress hands the sound over to it.
+    // Whichever player is silent first switches,
+    // then the other follows when the crossfade happens.
     if (on_) {
       if (A.alt_pending_ && A.isOff()) A.SwitchAlt();
       if (B.alt_pending_ && B.isOff()) B.SwitchAlt();
@@ -147,9 +141,9 @@ public:
 
     switch (state_) {
       case SwingState::OFF:
-	if (!A.player || !B.player) {
-	  PickRandomSwing();
-	}
+  if (!A.player || !B.player) {
+    PickRandomSwing();
+  }
         if (speed < smooth_swing_config.SwingStrengthThreshold) {
 #if 1
           if (monitor.ShouldPrint(Monitoring::MonitorSwings)) {
@@ -160,7 +154,7 @@ public:
           break;
         }
         state_ = SwingState::ON;
-	[[gnu::fallthrough]];
+  [[gnu::fallthrough]];
 
       case SwingState::ON:
         // trigger accent swing
@@ -177,7 +171,7 @@ public:
           // that is done.
           while (A.end() < 0.0) {
             B.midpoint = A.midpoint + A.separation;
-	    Swap();
+      Swap();
           }
           float mixab = 0.0;
           if (A.begin() < 0.0)
@@ -220,7 +214,7 @@ public:
         A.set_volume(0);
         B.set_volume(0);
         state_ = SwingState::OUT;
-	[[gnu::fallthrough]];
+  [[gnu::fallthrough]];
 
       case SwingState::OUT:
         if (!A.isOff() || !B.isOff()) {
@@ -243,26 +237,20 @@ private:
     void Play(Effect* effect, float start = 0.0) {
       effect_ = effect;
       if (!player) {
-	player = GetFreeWavPlayer();
-	if (!player) return;
+  player = GetFreeWavPlayer();
+  if (!player) return;
       }
       player->set_volume(0.0f);
       player->PlayOnce(effect, start);
       player->PlayLoop(effect);
     }
-    // Switch this player over to the currently selected alternative.
-    // Only safe to call while this player is silent, since restarting the
-    // reader cuts whatever it is playing off instantly.
+    // Switch to the currently selected alternative.
     void SwitchAlt() {
       alt_pending_ = false;
       if (!player || !effect_) return;
-      // Resume at the same point in the sound, so that this player stays in
-      // sync with the other one (and with the hum).
+      // Resume at the same point in the sound.
       float pos = player->pos();
-      // PlayWav's reader is a coroutine parked in the middle of the file it
-      // is streaming, and it won't look at a new PlayOnce() request until
-      // that file runs out. Stopping it first is what makes the switch
-      // actually take effect. Stop() preserves the target volume.
+      // Stop() keeps the target volume.
       player->Stop();
       player->PlayOnce(effect_, pos);
       player->PlayLoop(effect_);
@@ -302,9 +290,6 @@ private:
     float width = 0.0;
     float separation = 0.0;
     Effect* effect_ = nullptr;
-    // Set when an alt-sound switch has been requested but this player was
-    // still audible. Lives in Data so that it follows its own player through
-    // Swap().
     bool alt_pending_ = false;
   };
   Data A;
