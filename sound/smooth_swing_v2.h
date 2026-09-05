@@ -110,8 +110,8 @@ public:
     if (A.alt == current_alternative && B.alt == current_alternative) return;
     float start;
     if (!GetStartPosition(&start)) return;
-    if (A.alt != current_alternative && A.isOff()) A.SwitchAlt(L, start);
-    if (B.alt != current_alternative && B.isOff()) B.SwitchAlt(H, start);
+    A.SwitchAlt(L, start);
+    B.SwitchAlt(H, start);
   }
 
   enum class SwingState {
@@ -242,6 +242,7 @@ private:
     }
     // Switch swings to the current alt only while player is silent.
     void SwitchAlt(Effect* effect, float start) {
+      if (alt == current_alternative || !isOff()) return;
       Stop();
       Play(effect, start);
     }
