@@ -59,13 +59,19 @@ public:
     B = C;
   }
 
+  bool GetStartPosition(float* start) {
+    RefPtr<BufferedWavPlayer> humplayer = GetWavPlayerPlaying(hybrid_font.getHum());
+    if (!humplayer) return false;
+    *start = (font_config.ProffieOSSmoothSwingHumstart == 0) ? millis() / 1000.0 : humplayer->pos();
+    return true;
+  }
+
   // Should only be done when the volume is near zero.
   void PickRandomSwing() {
     if (!on_) return;
     uint32_t m = millis();
-    RefPtr<BufferedWavPlayer> humplayer = GetWavPlayerPlaying(hybrid_font.getHum());
-    if (!humplayer) return;
-    float start = (font_config.ProffieOSSmoothSwingHumstart == 0) ? m / 1000.0 : humplayer->pos();
+    float start;
+    if (!GetStartPosition(&start)) return;
     // No point in picking a new random so soon after picking one.
     if (A.player && m - last_random_ < 1000) return;
     last_random_ = m;
@@ -76,9 +82,6 @@ public:
     H->Select(swing);
     A.Play(L, start);
     B.Play(H, start);
-    // Both players just started using the current alternative.
-    A.alt_pending_ = false;
-    B.alt_pending_ = false;
     if (random(2)) Swap();
     float t1_offset = random(1000) / 1000.0 * 50 + 10;
     A.SetTransition(t1_offset, smooth_swing_config.Transition1Degrees);
@@ -95,21 +98,20 @@ public:
   void SB_Off(OffType off_type, EffectLocation location) override {
     if (location.on_blade(0)) {
       on_ = false;
-      A.alt_pending_ = false;
-      B.alt_pending_ = false;
       A.Off();
       B.Off();
     }
     delegate_->SB_Off(off_type, location);
   }
 
-  void SB_Effect(EffectType effect, EffectLocation location) override {
-    delegate_->SB_Effect(effect, location);
-    if (effect == EFFECT_ALT_SOUND && on_ && L && H &&
-       (L->number_of_alternatives() > 1 || H->number_of_alternatives() > 1)) {
-      A.alt_pending_ = true;
-      B.alt_pending_ = true;
-    }
+  // At alt change, switch swings when player is silent,
+  // and start at the hum position.
+  void CheckAlt() {
+    if (A.alt == current_alternative && B.alt == current_alternative) return;
+    float start;
+    if (!GetStartPosition(&start)) return;
+    if (A.alt != current_alternative && A.isOff()) A.SwitchAlt(L, start);
+    if (B.alt != current_alternative && B.isOff()) B.SwitchAlt(H, start);
   }
 
   enum class SwingState {
@@ -132,13 +134,7 @@ public:
     if (delta > 1000000) delta = 1;
     last_micros_ = t;
     float hum_volume = 1.0;
-    // Whichever player is silent first switches,
-    // then the other follows when the crossfade happens.
-    if (on_) {
-      if (A.alt_pending_ && A.isOff()) A.SwitchAlt();
-      if (B.alt_pending_ && B.isOff()) B.SwitchAlt();
-    }
-
+    if (on_) CheckAlt();
     switch (state_) {
       case SwingState::OFF:
   if (!A.player || !B.player) {
@@ -235,7 +231,7 @@ private:
       if (player) player->set_volume(v);
     }
     void Play(Effect* effect, float start = 0.0) {
-      effect_ = effect;
+      alt = current_alternative;
       if (!player) {
   player = GetFreeWavPlayer();
   if (!player) return;
@@ -244,16 +240,10 @@ private:
       player->PlayOnce(effect, start);
       player->PlayLoop(effect);
     }
-    // Switch to the currently selected alternative.
-    void SwitchAlt() {
-      alt_pending_ = false;
-      if (!player || !effect_) return;
-      // Resume at the same point in the sound.
-      float pos = player->pos();
-      // Stop() keeps the target volume.
-      player->Stop();
-      player->PlayOnce(effect_, pos);
-      player->PlayLoop(effect_);
+    // Switch swings to the current alt only while player is silent.
+    void SwitchAlt(Effect* effect, float start) {
+      Stop();
+      Play(effect, start);
     }
     bool isPlaying() {
       if (!player) return false;
@@ -289,8 +279,7 @@ private:
     float midpoint = 0.0;
     float width = 0.0;
     float separation = 0.0;
-    Effect* effect_ = nullptr;
-    bool alt_pending_ = false;
+    int alt = 0;
   };
   Data A;
   Data B;
