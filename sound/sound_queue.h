@@ -289,7 +289,7 @@ public:
     // player for length() before it has been opened doesn't work), and
     // sounds that start in the middle of the speech get ducked as well.
     if (busy_ && player) {
-      DodgeSound(kDodgeHoldMs);
+      DodgeSound(DODGE_HOLD_MILLIS);
       // ...but not the sound we are trying to make audible.
       player->set_dodge(false);
     }
@@ -307,7 +307,7 @@ private:
   // How long other sounds stay ducked after the last poll that found the
   // queue busy.  Re-armed on every poll, so this only decides how quickly
   // things come back up once the queue goes quiet.
-  static const uint32_t kDodgeHoldMs = 250;
+  static const uint32_t DODGE_HOLD_MILLIS = 250;
   bool busy_ = false;
   bool fadeout_;
   bool fadeout_len_;

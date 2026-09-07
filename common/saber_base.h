@@ -262,10 +262,10 @@ private:
 // by the time anything looks at it.
 class DeferredEffects {
 public:
-  static const size_t kMaxDeferredEffects = 4;
+  static const size_t MAX_DEFERRED_EFFECTS = 4;
 
   bool push(EffectType effect, EffectLocation location) {
-    if (num_ >= kMaxDeferredEffects) return false;
+    if (num_ >= MAX_DEFERRED_EFFECTS) return false;
     effects_[num_] = effect;
     locations_[num_] = location;
     num_++;
@@ -277,8 +277,8 @@ public:
   void clear() { num_ = 0; }
 
 private:
-  EffectType effects_[kMaxDeferredEffects];
-  EffectLocation locations_[kMaxDeferredEffects];
+  EffectType effects_[MAX_DEFERRED_EFFECTS];
+  EffectLocation locations_[MAX_DEFERRED_EFFECTS];
   size_t num_ = 0;
 };
 
