@@ -4,6 +4,7 @@
 #include "linked_list.h"
 #include "vec3.h"
 #include "onceperblade.h"
+#include "delay_timer.h"
 
 // SaberBase is our main class for distributing saber-related events, such
 // as on/off/clash/etc. to where they need to go. Each SABERFUN below
