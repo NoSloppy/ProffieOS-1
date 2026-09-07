@@ -4,12 +4,20 @@
 
 #include "delay_timer.h"
 
-// Keep around for use for other things
+// Ducks all wav players for a while, so that Talkie/beeper error messages
+// remain intelligible when a prop has other sounds playing.
 #ifdef ENABLE_AUDIO
 void DodgeSound(uint32_t millis);
 #else
 #define DodgeSound(X) X
 #endif
+
+// Set by PlayErrorMessage() when a WAV has been queued for the error that is
+// currently being reported, which means we should not also say it with Talkie.
+inline bool& error_wav_queued() {
+  static bool queued = false;
+  return queued;
+}
 
 class ProffieOSErrors {
 public:
@@ -45,15 +53,18 @@ void ProffieOSErrors::sd_card_not_found() {
 }
 
 void ProffieOSErrors::font_directory_not_found() {
+  error_wav_queued() = false;
   SaberBase::DoEffect(EFFECT_FONT_DIRECTORY_NOT_FOUND, 0);
   PVLOG_ERROR << "** ERROR - Font directory not found.\n"
                  "** See https://pod.hubbe.net/troubleshooting/what-is-it-saying.html#font-directory-not-found\n";
 #ifdef ENABLE_AUDIO
-  if (SaberBase::sound_length > 0) return;
+  if (error_wav_queued()) return;
 #ifndef DISABLE_TALKIE
   talkie.Say(talkie_font_directory_15, 15);
   talkie.Say(talkie_not_found_15, 15);
   delay_timer().Append(2000);
+  // Duck any other sounds for as long as we will be talking.
+  DodgeSound(delay_timer().remaining());
 #else
   beeper.Beep(0.5,   261.63 * 2);  // C5 - Font
   beeper.Beep(0.5/3, 246.94 * 2);  // B4 - di
@@ -63,40 +74,46 @@ void ProffieOSErrors::font_directory_not_found() {
   beeper.Beep(0.5,   146.83 * 2);  // D4 - not
   beeper.Beep(0.5,   130.81 * 2);  // C4 - found
   delay_timer().Append(2530);
+  DodgeSound(delay_timer().remaining());
 #endif
 #endif
 }
 
 void ProffieOSErrors::voice_pack_not_found() {
+  error_wav_queued() = false;
   SaberBase::DoEffect(EFFECT_VOICE_PACK_NOT_FOUND, 0);
   PVLOG_ERROR << "** ERROR - Voice pack not found.\n"
                  "** See https://pod.hubbe.net/troubleshooting/what-is-it-saying.html#voice-pack-not-found\n";
 #ifdef ENABLE_AUDIO
-  if (SaberBase::sound_length > 0) return;
+  if (error_wav_queued()) return;
 #ifndef DISABLE_TALKIE
   talkie.Say(talkie_voice_pack_15, 25);
   talkie.Say(talkie_not_found_15, 15);
   delay_timer().Append(2000);
+  DodgeSound(delay_timer().remaining());
 #else
   beeper.Beep(1.0, 220.00 * 2);  // A4 - Voice
   beeper.Beep(0.5, 130.81 * 2);  // C4 - pack
   beeper.Beep(0.5, 146.83 * 2);  // D4 - not
   beeper.Beep(1.0, 130.81 * 2);  // C4 - found
   delay_timer().Append(3000);
+  DodgeSound(delay_timer().remaining());
 #endif
 #endif
 }
 
 void ProffieOSErrors::error_in_blade_array() {
+  error_wav_queued() = false;
   SaberBase::DoEffect(EFFECT_ERROR_IN_BLADE_ARRAY, 0);
   PVLOG_ERROR << "** ERROR - Error in blade array\n"
                  "** See https://pod.hubbe.net/troubleshooting/what-is-it-saying.html#error-in-blade-array\n";
 #ifdef ENABLE_AUDIO
-  if (SaberBase::sound_length > 0) return;
+  if (error_wav_queued()) return;
 #ifndef DISABLE_TALKIE
   talkie.Say(talkie_error_in_15, 15);
   talkie.Say(talkie_blade_array_15, 15);
   delay_timer().Append(2000);
+  DodgeSound(delay_timer().remaining());
 #else
   beeper.Beep(0.25, 174.61 * 2);  // F4 - Err
   beeper.Beep(0.25, 196.00 * 2);  // G4 - or
@@ -107,20 +124,23 @@ void ProffieOSErrors::error_in_blade_array() {
   beeper.Beep(0.5,  146.83 * 2);  // D4 - ar
   beeper.Beep(1.0,  130.81 * 2);  // C4 - ray
   delay_timer().Append(3000);
+  DodgeSound(delay_timer().remaining());
 #endif
 #endif
 }
 
 void ProffieOSErrors::error_in_font_directory() {
+  error_wav_queued() = false;
   SaberBase::DoEffect(EFFECT_ERROR_IN_FONT_DIRECTORY, 0);
   PVLOG_ERROR << "** ERROR - Error in font directory.\n"
                  "** See https://pod.hubbe.net/troubleshooting/what-is-it-saying.html#error-in-font-directory\n";
 #ifdef ENABLE_AUDIO
-  if (SaberBase::sound_length > 0) return;
+  if (error_wav_queued()) return;
 #ifndef DISABLE_TALKIE
   talkie.Say(talkie_error_in_15, 15);
   talkie.Say(talkie_font_directory_15, 15);
   delay_timer().Append(1300);
+  DodgeSound(delay_timer().remaining());
 #else
   beeper.Beep(0.25, 174.61 * 2);  // F4 - Err
   beeper.Beep(0.25, 196.00 * 2);  // G4 - or
@@ -132,21 +152,24 @@ void ProffieOSErrors::error_in_font_directory() {
   beeper.Beep(0.5,  246.94 * 2);  // B4 - tor
   beeper.Beep(0.5,  261.63 * 2);  // C5 - y
   delay_timer().Append(3500);
+  DodgeSound(delay_timer().remaining());
 #endif
 #endif
 }
 
 void ProffieOSErrors::error_in_voice_pack_version() {
+  error_wav_queued() = false;
   SaberBase::DoEffect(EFFECT_ERROR_IN_VOICE_PACK_VERSION, 0);
   PVLOG_ERROR << "** ERROR - Error in voice pack version.\n"
                  "** See https://pod.hubbe.net/troubleshooting/what-is-it-saying.html#error-in-voice-pack-version\n";
 #ifdef ENABLE_AUDIO
-  if (SaberBase::sound_length > 0) return;
+  if (error_wav_queued()) return;
 #ifndef DISABLE_TALKIE
   talkie.Say(talkie_error_in_15, 15);
   talkie.Say(talkie_voice_pack_15, 15);
   talkie.Say(talkie_version_15, 15);
   delay_timer().Append(1800);
+  DodgeSound(delay_timer().remaining());
 #else
   beeper.Beep(0.25, 174.61 * 2);  // F4 - Err
   beeper.Beep(0.25, 196.00 * 2);  // G4 - or
@@ -157,6 +180,7 @@ void ProffieOSErrors::error_in_voice_pack_version() {
   beeper.Beep(1.0,  196.00 * 2);  // G4 - ver
   beeper.Beep(0.5,  130.81 * 2);  // C4 - sion
   delay_timer().Append(3500);
+  DodgeSound(delay_timer().remaining());
 #endif
 #endif
 }
