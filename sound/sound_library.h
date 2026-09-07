@@ -59,16 +59,7 @@ public:
   const char* name() { return "SoundQueue"; }
   void Loop() override {
     PollSoundQueue(wav_player_);
-    // Keep the delay timer just past the current WAV end so boot/font waits for queue drain.
-    if (busy() && wav_player_) {
-      float pos = wav_player_->pos();
-      float len = wav_player_->length();
-      // pos() is negative while output buffer drains after decode; then remaining is -pos.
-      float remaining = (pos < 0.0f) ? -pos : (len - pos);
-      if (remaining < 0.0f) remaining = 0.0f;
-      uint32_t needed_until = millis() + (uint32_t)(remaining * 1000) + 500;
-      delay_timer().ExtendTo(needed_until);
-    }
+    ExtendErrorHold(wav_player_);
   }
 
   void require_version(int version) {
@@ -90,18 +81,27 @@ void Poll(RefPtr<BufferedWavPlayer>& player) {
     wav_player_.Free();
   }
   PollSoundQueue(player);
+  ExtendErrorHold(player);
+}
 
-  if (busy() && player) {
+private:
+  // While an error announcement is in progress, keep the hold just past the
+  // end of the WAV that is currently playing, so that boot/font events wait
+  // for the whole queue to drain.  Note that we only ever extend a hold that
+  // is already running - ordinary queued speech (menus, colors, etc.) should
+  // not delay anything.
+  void ExtendErrorHold(RefPtr<BufferedWavPlayer>& player) {
+    if (!delay_timer().Active()) return;
+    if (!busy() || !player) return;
     float pos = player->pos();
     float len = player->length();
+    // pos() is negative while output buffer drains after decode; then remaining is -pos.
     float remaining = (pos < 0.0f) ? -pos : (len - pos);
     if (remaining < 0.0f) remaining = 0.0f;
     uint32_t needed_until = millis() + (uint32_t)(remaining * 1000) + 500;
     delay_timer().ExtendTo(needed_until);
   }
-}
 
-private:
   void CheckVersion() {
     int found_version = 0;
     if (SFX_mnum) {
@@ -150,8 +150,10 @@ inline bool PlayErrorMessage(const char* filename) {
   PVLOG_DEBUG << "*** Error wav found in "
                << (in_font ? "font" : "errors/") << " folder: " << filename << "\n";
   if (!SOUNDQ->Play(SoundToPlayErrorFile(filename))) return false;
-  // Sound_length is still 0. Set a non-zero value now so errors.h suppresses Talkie immediately.
-  if (SaberBase::sound_length < 0.001f) SaberBase::sound_length = 0.001f;
+  // Tell errors.h that we've got this one covered, so that it doesn't say
+  // the same thing again with Talkie.  (SaberBase::sound_length can't be used
+  // for this, as the WAV hasn't been opened yet and its length is unknown.)
+  error_wav_queued() = true;
   // Short initial hold until Loop() updates delay from actual remaining playback.
   delay_timer().Append(500);
   return true;

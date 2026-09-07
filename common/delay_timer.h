@@ -34,6 +34,12 @@ class DelayTimer {
     return millis() < deadline_ms_;
   }
 
+  // Milliseconds left until the deadline, 0 if it has passed.
+  uint32_t remaining() const {
+    uint32_t now = millis();
+    return (now < deadline_ms_) ? (deadline_ms_ - now) : 0;
+  }
+
   bool Expired() {
     uint32_t now = millis();
     if (deadline_ms_ == 0 || now < deadline_ms_) return false;

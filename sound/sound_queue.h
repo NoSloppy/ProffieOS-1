@@ -282,6 +282,17 @@ public:
         if (player) player.Free();
       }
     }
+    // Duck everything else while the queue is speaking, so that error
+    // messages, menu prompts, etc. stay intelligible even if the prop has
+    // other sounds going.  The hold is short and re-armed on every poll,
+    // which means we don't need to know how long the sound is (asking the
+    // player for length() before it has been opened doesn't work), and
+    // sounds that start in the middle of the speech get ducked as well.
+    if (busy_ && player) {
+      DodgeSound(kDodgeHoldMs);
+      // ...but not the sound we are trying to make audible.
+      player->set_dodge(false);
+    }
   }
   bool busy() const { return busy_; }
   void fadeout(float len) {
@@ -293,6 +304,10 @@ public:
     queue_.clear();
   }
 private:
+  // How long other sounds stay ducked after the last poll that found the
+  // queue busy.  Re-armed on every poll, so this only decides how quickly
+  // things come back up once the queue goes quiet.
+  static const uint32_t kDodgeHoldMs = 250;
   bool busy_ = false;
   bool fadeout_;
   bool fadeout_len_;
