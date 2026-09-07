@@ -132,6 +132,15 @@ void DodgeSound(uint32_t millis) {
   undodge.start(millis);
 }
 
+// Fires boot/font events that were held back while error messages played.
+class DeferredEffectPoller : public Looper {
+public:
+  const char* name() override { return "DeferredEffectPoller"; }
+  void Loop() override { SaberBase::PollDeferredEffects(); }
+};
+
+DeferredEffectPoller deferred_effect_poller;
+
 // Fwd declarations - Defined in sound_library.h after SoundQueueSingleton and SOUNDQ are available.
 bool PlayErrorMessage(const char* filename);
 bool PlayQueuedSound(Effect* effect);
