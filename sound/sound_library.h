@@ -99,9 +99,7 @@ private:
     uint32_t needed_until = millis() + (uint32_t)(remaining * 1000) + 500;
     delay_timer().ExtendTo(needed_until);
   }
-}
 
-private:
   void CheckVersion() {
     int found_version = 0;
     if (SFX_mnum) {
