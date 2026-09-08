@@ -540,7 +540,7 @@ class Effect {
       return;
     }
 
-    PVLOG_DEBUG << "SCAN: " << filename << "\n";
+    //PVLOG_DEBUG << "SCAN: " << filename << "\n";
 
     for (Effect* e = all_effects; e; e = e->next_) {
       // This effect has already been found in a previous
@@ -579,7 +579,7 @@ class Effect {
     }
 
     void ScanIterator(LSFS::Iterator& iter) {
-      PVLOG_DEBUG << "ScanIterator " << iter.name() << " fname=" << fname << "\n";
+      // PVLOG_DEBUG << "ScanIterator " << iter.name() << " fname=" << fname << "\n";
       char* fend = fname;
       int flen = strlen(fname);
       fend += flen;

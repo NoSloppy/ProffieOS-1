@@ -98,6 +98,7 @@ Reset after Detonation          - To reset, toggle the POW button by closing and
 
 #include "prop_base.h"
 #include "../sound/sound_library.h"
+#include "../common/delay_timer.h"
 
 #ifndef DESTRUCT_TIMER_DURATION
 #define DESTRUCT_TIMER_DURATION 6.0f
@@ -107,36 +108,6 @@ Reset after Detonation          - To reset, toggle the POW button by closing and
 
 EFFECT(destruct);  // for optional Countdown Timer sound. If not in font, armhum plays straight through to Detonation.
 EFFECT(mute);     // Notification before muted ignition to avoid confusion.
-
-class DelayTimer {
-public:
-  DelayTimer() : triggered_(false), trigger_time_(0), duration_(0) {}
-
-  void trigger(uint32_t duration) {
-    triggered_ = true;
-    trigger_time_ = millis();
-    duration_ = duration;
-  }
-
-  void stopTimer() {
-    PVLOG_DEBUG << "** Stopping timer.\n";
-    triggered_ = false;
-  }
-
-  bool isTimerExpired() {
-    if (!triggered_) return false;
-    if (millis() - trigger_time_ > duration_) {
-      stopTimer();
-      return true;  // Timer has elapsed
-    }
-    return false;  // Timer is still running
-  }
-
-private:
-  bool triggered_;
-  uint32_t trigger_time_;
-  uint32_t duration_;
-};
 
 class DetonatorBCButtons : public PROP_INHERIT_PREFIX PropBase {
 public:
@@ -246,7 +217,7 @@ wav would be delayed from starting if DESTRUCT_TIMER_DURATION is > 6seconds, and
     sound_library_.Poll(wav_player);
     if (wav_player && !wav_player->isPlaying()) wav_player.Free();
     // Play optional mute.wav first.
-    if (mute_all_delay_timer_.isTimerExpired()) {
+    if (mute_all_delay_timer_.Expired()) {
       if (SetMute(true)) {
         unmute_on_deactivation_ = true;
         PVLOG_NORMAL << "**** MUTE\n";
@@ -326,9 +297,9 @@ wav would be delayed from starting if DESTRUCT_TIMER_DURATION is > 6seconds, and
 // Mute Toggle Anytime. Resets on preset change or OFF/BOOM)
       case EVENTID(BUTTON_AUX, EVENT_THIRD_HELD_MEDIUM, MODE_ON):
         if (hybrid_font.PlayPolyphonic(&SFX_mute)) {
-          mute_all_delay_timer_.trigger(SaberBase::sound_length * 1000);
+          mute_all_delay_timer_.Start(SaberBase::sound_length * 1000);
         } else {
-          mute_all_delay_timer_.trigger(0);
+          mute_all_delay_timer_.Start(0);
         }
         return true;
 
