@@ -383,7 +383,7 @@ public:
         Clear();
         return 3600000; // Long time!
 
-      case SCREEN_STARTUP:
+      case SCREEN_STARTUP: {
         Clear();
         // DrawText("==SabeR===", 0,15, Starjedi10pt7bGlyphs);
         // DrawText("++Teensy++",-4,31, Starjedi10pt7bGlyphs);
@@ -399,13 +399,22 @@ public:
           DrawScreenText(install_time, 63, Starjedi10pt7bGlyphs);
         }
         next_screen_ = SCREEN_DEFAULT;
+        // Calculate duration with extra time for scrolling boot text if needed
+        uint32_t boot_duration;
         if (font_config.ProffieOSTextMessageDuration != -1) {
-          return font_config.ProffieOSTextMessageDuration;
+          boot_duration = font_config.ProffieOSTextMessageDuration;
         } else if (font_config.ProffieOSFontImageDuration > 0) {
-          return font_config.ProffieOSFontImageDuration;
+          boot_duration = font_config.ProffieOSFontImageDuration;
         } else {
-          return 3500;
+          boot_duration = 3500;
         }
+        // Add extra time if boot text exceeds screen height
+        int boot_lines = (display_->HardwareHeight() > 32) ? 4 : 2;
+        if (boot_lines > 3) {
+          boot_duration += (boot_lines - 3) * 2000;
+        }
+        return boot_duration;
+      }
 
       case SCREEN_PLI:
         if (!SaberBase::IsOn() && t_ >= PLI_OFF_TIME) {
@@ -436,6 +445,12 @@ public:
         } else {
           t = 3500;
         }
+        
+        // Add extra time for scrolling if text has many lines
+        if (message_line_count_ > 3) {
+          t += (message_line_count_ - 3) * 2000;
+        }
+        
         if (t_ >= t) {
           screen_ = SCREEN_DEFAULT;
           ShowDefault();
