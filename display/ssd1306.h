@@ -631,24 +631,24 @@ public:
   }
 
   // Config file hooks for custom heights like 64x48 OLEDs.
-    virtual int MessageY() {
-      return HEIGHT / 2 + 7;
-    }
-    virtual int MessageTwoLineY() {
-      return 15;
-    }
-    virtual void DrawScreenText(const char* message, int y, const Glyph* font) {
-      display_->DrawText(message, 0, y, font);
-    }
-    virtual void DrawScreenBatteryBar(const Glyph& bar, float percent) {
-      display_->DrawBatteryBar(bar, percent);
-    }
-    virtual int BootY() {
-      return 15;
-    }
-    virtual bool ShowVoltage() {
-      return display_->HardwareHeight() > 32;
-    }
+  virtual int MessageY() {
+    return HEIGHT / 2 + 7;
+  }
+  virtual int MessageTwoLineY() {
+    return 15;
+  }
+  virtual void DrawScreenText(const char* message, int y, const Glyph* font) {
+    display_->DrawText(message, 0, y, font);
+  }
+  virtual void DrawScreenBatteryBar(const Glyph& bar, float percent) {
+    display_->DrawBatteryBar(bar, percent);
+  }
+  virtual int BootY() {
+    return 15;
+  }
+  virtual bool ShowVoltage() {
+    return display_->HardwareHeight() > 32;
+  }
 
   // Calls SetScreenNow already.
   void SetErrorMessage(const char* text) {
@@ -1068,7 +1068,6 @@ public:
       Send(0x80);                          // the suggested ratio 0x80
 
       Send(SETMULTIPLEX);                  // 0xA8
-      // Send(HEIGHT - 1);
       Send(HardwareHeight() - 1);
 
       Send(SETDISPLAYOFFSET);              // 0xD3
