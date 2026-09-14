@@ -447,8 +447,8 @@ public:
         }
         
         // Add extra time for scrolling if text has many lines
-        if (message_line_count_ > 3) {
-          t += (message_line_count_ - 3) * 2000;
+        if (message_line_count_ > this->NumberOfTextLines()) {
+          t += (message_line_count_ - this->NumberOfTextLines()) * 1000;
         }
         
         if (t_ >= t) {
@@ -464,26 +464,43 @@ public:
       #endif
         // Make text scroll after 1 second if it doesn't fit on screen 
         int y;
-        if (message_line_count_ == 1) {
-          y = MessageY();
-        } else {
-          int total_height = (message_line_count_ - 1) * LineHeight();
-          int available_height = HEIGHT - MessageTwoLineY();
-          if (total_height > available_height) {
-            uint32_t elapsed = millis() - message_start_time_;
-            int max_scroll = total_height - available_height;
-            int scroll_amount = 0;
-            if (elapsed > 1000) {
-              scroll_amount = (elapsed - 1000) / 50;  // pixels per 50ms
-              if (scroll_amount > max_scroll) scroll_amount = max_scroll;
-            }
-            y = MessageTwoLineY() - (message_line_count_ - 2) * LineHeight() - scroll_amount;
+        int lines_that_fit = this->NumberOfTextLines();
+        
+        if (message_line_count_ <= lines_that_fit) {
+          // All lines fit on screen
+          if (message_line_count_ == 1) {
+            y = MessageY();
           } else {
-            // Fits on screen normally
             y = MessageTwoLineY() - (message_line_count_ - 2) * LineHeight();
           }
+          DrawScreenText(message_, y, font);
+        } else {
+          // Text is too tall, need scrolling
+          uint32_t elapsed = millis() - message_start_time_;
+          int lines_to_scroll = message_line_count_ - lines_that_fit;
+          int max_scroll_pixels = lines_to_scroll * LineHeight() + LineHeight();
+          int scroll_pixels = 0;
+          
+          if (elapsed > 1000) {
+            scroll_pixels = (elapsed - 1000) / 50;
+            if (scroll_pixels > max_scroll_pixels) scroll_pixels = max_scroll_pixels;
+          }
+          
+          // Find which line to start displaying from
+          int start_line = scroll_pixels / LineHeight();
+          int line_offset = scroll_pixels % LineHeight();
+          
+          // Build substring starting from start_line
+          const char* line_ptr = message_;
+          for (int i = 0; i < start_line && *line_ptr; i++) {
+            while (*line_ptr && *line_ptr != '\n') line_ptr++;
+            if (*line_ptr == '\n') line_ptr++;
+          }
+          
+          // Display: scroll from 2-line position
+          y = MessageTwoLineY() - line_offset;
+          DrawScreenText(line_ptr, y, font);
         }
-        DrawScreenText(message_, y, font);
         return 200;  // redraw once every 200 ms
       }
 
@@ -668,6 +685,9 @@ public:
   }
 
   // Config file hooks for custom heights like 64x48 OLEDs.
+  virtual int NumberOfTextLines() {
+    return 2;  // Default for standard displays
+  }
   virtual int MessageY() {
     return HEIGHT / 2 + 7;
   }
