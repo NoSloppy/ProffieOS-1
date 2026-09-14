@@ -444,7 +444,7 @@ public:
   }
 
   void DrawScreenText(const char* message, int y, const Glyph* font) override {
-    this->display_->DrawTextScaled(message, 0, y, font, 0.8f);
+    this->display_->DrawText(message, 0, y, font, 0.8f);
   }
 
   void DrawScreenBatteryBar(const Glyph& bar, float percent) override {
