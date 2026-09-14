@@ -443,10 +443,15 @@ public:
     font_config(*getPtr<BlasterDisplayConfigFile>()) {
   }
 
-  void DrawScreenText(const char* message, int y, const Glyph* font) override {
-    this->display_->DrawText(message, 0, y, font, 0.8f);
-  }
-
+  // void DrawScreenText(const char* message, int y, const Glyph* font) override {
+  //   float scale = (float)this->LineHeight() / 16.0f;
+  //   this->display_->DrawText(
+  //       message, 0, y, font, scale, this->LineHeight());
+  // }
+void DrawScreenText(const char* message, int y, const Glyph* font) override {
+  float scale = 0.8f * (float)this->LineHeight() / 16.0f;
+  this->display_->DrawText(message, 0, y, font, scale, this->LineHeight());
+}
   void DrawScreenBatteryBar(const Glyph& bar, float percent) override {
     this->display_->DrawBatteryBar(bar, percent, 8);
   }
