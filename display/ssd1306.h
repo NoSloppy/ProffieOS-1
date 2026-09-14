@@ -682,13 +682,14 @@ public:
     return 2;  // Default for standard displays
   }
   virtual int MessageY() {
-    return HEIGHT / 2 + 7;
+    return display_->HardwareHeight() / 2 +
+           (int)(7.0f * LineHeight() / 16.0f + 0.5f);
   }
   virtual int MessageTwoLineY() {
-    return 15;
+    return LineHeight();
   }
   virtual int LineHeight() {
-    return 16;
+    return display_->HardwareHeight() / NumberOfTextLines();
   }
   virtual void DrawScreenText(const char* message, int y, const Glyph* font) {
     float scale = (float)LineHeight() / 16.0f;  // Scale to fit LineHeight
