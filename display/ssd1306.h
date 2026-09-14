@@ -442,18 +442,36 @@ public:
           return FillFrameBuffer2(advance);
         }
         Clear();
-        // Aurebesh Font option.
-#ifdef USE_AUREBESH_FONT
+      #ifdef USE_AUREBESH_FONT
         const Glyph* font = Aurebesh10pt7bGlyphs;
-#else
+      #else
         const Glyph* font = Starjedi10pt7bGlyphs;
-#endif
-        if (strchr(message_, '\n')) {
-          DrawScreenText(message_, MessageTwoLineY(), font);
+      #endif
+        // Make text scroll after 1 second if it doesn't fit on screen 
+        int y;
+        if (message_line_count_ == 1) {
+          y = MessageY();
         } else {
-          // centered
-          DrawScreenText(message_, MessageY(), font);
+          int total_height = (message_line_count_ - 1) * LineHeight();
+          int available_height = HEIGHT - MessageTwoLineY();
+          
+          if (total_height > available_height) {
+            // Text doesn't fit; scroll after 1 second delay
+            uint32_t elapsed = millis() - message_start_time_;
+            if (elapsed > 1000) {
+              int scroll_amount = (elapsed - 1000) / 50;  // pixels per 50ms
+              int max_scroll = total_height - available_height;
+              if (scroll_amount > max_scroll) scroll_amount = max_scroll;
+              y = MessageTwoLineY() - scroll_amount;
+            } else {
+              y = MessageTwoLineY() - (message_line_count_ - 2) * LineHeight();
+            }
+          } else {
+            // Fits on screen normally
+            y = MessageTwoLineY() - (message_line_count_ - 2) * LineHeight();
+          }
         }
+        DrawScreenText(message_, y, font);
         return 200;  // redraw once every 200 ms
       }
 
@@ -628,6 +646,13 @@ public:
     strncpy(message_, text, sizeof(message_));
     message_[sizeof(message_)-1] = 0;
     screen_ = SCREEN_MESSAGE;
+    
+    // Count lines
+    message_line_count_ = 1;
+    for (int i = 0; text[i]; i++) {
+      if (text[i] == '\n') message_line_count_++;
+    }
+    message_start_time_ = millis();
   }
 
   // Config file hooks for custom heights like 64x48 OLEDs.
@@ -636,6 +661,9 @@ public:
   }
   virtual int MessageTwoLineY() {
     return 15;
+  }
+  virtual int LineHeight() {
+    return 16;
   }
   virtual void DrawScreenText(const char* message, int y, const Glyph* font) {
     display_->DrawText(message, 0, y, font);
@@ -926,6 +954,9 @@ public:
 // #endif
 
 private:
+  // Have text scroll if longer than screen height
+  uint32_t message_start_time_ = 0;
+  int message_line_count_ = 0;
   // Variables related to frame buffer layout.
   uint8_t xor_ = 0;
   bool invert_y_ = 0;
