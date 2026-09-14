@@ -88,6 +88,10 @@ enum Screen {
 template<int Width, class col_t>
 class Display : public MonoFrame<Width, col_t> {
 public:
+  virtual int HardwareHeight() {
+    return sizeof(col_t) * 8;
+  }
+
   virtual void Page() = 0;
   virtual void SB_Top() = 0;
   virtual Screen GetScreen() = 0;
@@ -270,9 +274,9 @@ class Combine {
 
 template<int Width, class col_t, typename PREFIX = ByteArray<>>
 class StandardDisplayController : public DisplayControllerBase<Width, col_t>, public SaberBase, private AudioStreamWork
-#ifdef ENABLE_DEVELOPER_COMMANDS
+// #ifdef ENABLE_DEVELOPER_COMMANDS
   , CommandParser
-#endif
+// #endif
 {
 protected:
   DisplayEffects<PREFIX> &img_;
@@ -384,14 +388,15 @@ public:
         // DrawText("==SabeR===", 0,15, Starjedi10pt7bGlyphs);
         // DrawText("++Teensy++",-4,31, Starjedi10pt7bGlyphs);
         if (WIDTH < 128) {
-          display_->DrawText("p-os", 0,15, Starjedi10pt7bGlyphs);
+          // Allow for custom scaling
+          DrawScreenText("p-os", BootY(), Starjedi10pt7bGlyphs);
         } else {
-          display_->DrawText("proffieos", 0,15, Starjedi10pt7bGlyphs);
+          DrawScreenText("proffieos", 15, Starjedi10pt7bGlyphs);
         }
-        display_->DrawText(version,0,31, Starjedi10pt7bGlyphs);
-        if (HEIGHT > 32) {
-          display_->DrawText("installed: ",0,47, Starjedi10pt7bGlyphs);
-          display_->DrawText(install_time,0,63, Starjedi10pt7bGlyphs);
+        DrawScreenText(version, 31, Starjedi10pt7bGlyphs);
+        if (display_->HardwareHeight() > 32) {
+          DrawScreenText("installed: ", 47, Starjedi10pt7bGlyphs);
+          DrawScreenText(install_time, 63, Starjedi10pt7bGlyphs);
         }
         next_screen_ = SCREEN_DEFAULT;
         if (font_config.ProffieOSTextMessageDuration != -1) {
@@ -409,15 +414,15 @@ public:
           return FillFrameBuffer2(advance);
         }
         Clear();
-        display_->DrawBatteryBar(BatteryBar16, battery_monitor.battery_percent());
-        if (HEIGHT > 32) {
+        DrawScreenBatteryBar(BatteryBar16, battery_monitor.battery_percent());
+        if (ShowVoltage()) {
           char tmp[32];
           strcpy(tmp, "volts x.xx");
           float v = battery_monitor.battery();
           tmp[6] = '0' + (int)floorf(v);
           tmp[8] = '0' + ((int)floorf(v * 10)) % 10;
           tmp[9] = '0' + ((int)floorf(v * 100)) % 10;
-          display_->DrawText(tmp,0,55, Starjedi10pt7bGlyphs);
+          DrawScreenText(tmp, 55, Starjedi10pt7bGlyphs);
         }
         return 200;  // redraw once every 200 ms
 
@@ -444,10 +449,10 @@ public:
         const Glyph* font = Starjedi10pt7bGlyphs;
 #endif
         if (strchr(message_, '\n')) {
-          display_->DrawText(message_, 0, 15, font);
+          DrawScreenText(message_, MessageTwoLineY(), font);
         } else {
-        // centered
-          display_->DrawText(message_, 0, HEIGHT / 2 + 7, font);
+          // centered
+          DrawScreenText(message_, MessageY(), font);
         }
         return 200;  // redraw once every 200 ms
       }
@@ -624,6 +629,26 @@ public:
     message_[sizeof(message_)-1] = 0;
     screen_ = SCREEN_MESSAGE;
   }
+
+  // Config file hooks for custom heights like 64x48 OLEDs.
+    virtual int MessageY() {
+      return HEIGHT / 2 + 7;
+    }
+    virtual int MessageTwoLineY() {
+      return 15;
+    }
+    virtual void DrawScreenText(const char* message, int y, const Glyph* font) {
+      display_->DrawText(message, 0, y, font);
+    }
+    virtual void DrawScreenBatteryBar(const Glyph& bar, float percent) {
+      display_->DrawBatteryBar(bar, percent);
+    }
+    virtual int BootY() {
+      return 15;
+    }
+    virtual bool ShowVoltage() {
+      return display_->HardwareHeight() > 32;
+    }
 
   // Calls SetScreenNow already.
   void SetErrorMessage(const char* text) {
@@ -876,7 +901,7 @@ public:
     file_.Close();
   }
 
-#ifdef ENABLE_DEVELOPER_COMMANDS
+// #ifdef ENABLE_DEVELOPER_COMMANDS
   bool Parse(const char* cmd, const char* e) override {
     if (!strcmp(cmd, "setmessage") && e) {
       STDOUT << "Setting message: " << e << "\n";
@@ -886,7 +911,7 @@ public:
     }
     return false;
   }
-#endif
+// #endif
 
 private:
   // Variables related to frame buffer layout.
@@ -927,6 +952,10 @@ template<int WIDTH, class col_t, class POWER_PIN = PowerPINS<> >
 class SSD1306Template : public Display<WIDTH, col_t>, I2CDevice, Looper, StateMachine {
 public:
   static const int HEIGHT = sizeof(col_t) * 8;
+// Hook for custom heights like 64x48 OLEDs.
+  virtual int HardwareHeight() {
+    return HEIGHT;
+  }
   const char* name() override { return "SSD1306"; }
 
   enum Commands {
@@ -1039,7 +1068,8 @@ public:
       Send(0x80);                          // the suggested ratio 0x80
 
       Send(SETMULTIPLEX);                  // 0xA8
-      Send(HEIGHT - 1);
+      // Send(HEIGHT - 1);
+      Send(HardwareHeight() - 1);
 
       Send(SETDISPLAYOFFSET);              // 0xD3
       Send(0x0);                                   // no offset
