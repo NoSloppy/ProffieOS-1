@@ -505,12 +505,10 @@ public:
 
 class MyDisplayController : public BlasterDisplayController<64, uint64_t> {
 public:
-  int MessageY() override {
-    return 31;
-  }
-
-  int MessageTwoLineY() override {
-    return 23;
+  int NumberOfTextLines() override {
+    // User's desired number to display - scaling is used to accommodate.
+    // Over-doing it will make things illegible.
+    return 3;  
   }
 };
 
