@@ -218,7 +218,7 @@ public:
     }
   }
 
-  void DrawBatteryBar(const Glyph& bar, float percent) {
+  void DrawBatteryBar(const Glyph& bar, float percent, int y = 0) {
     int start, end;
     if (bar.skip < bar.columns) {
       start = -bar.skip;
@@ -231,10 +231,70 @@ public:
     int pos = start;
     int bars = floorf(percent* (0.5 + max_bars) / 100);
     for (int i = 0; i < bars; i++) {
-      Draw(bar, pos, 0);
+      Draw(bar, pos, y);
       pos += bar.skip;
     }
   }
+
+void DrawTextScaled(const char* str, int x, int y,const Glyph* font, float scale) {
+
+  while (*str) {
+    if (*str == '\n') {
+      x = 0;
+      y += (int)(16 * scale + 0.5f);
+    } else if (*str >= 0x20 && *str <= 0x7f) {
+      const Glyph& glyph = font[*str - 0x20];
+
+      int glyph_height = 8;
+      if (glyph.column_size == 1) glyph_height = 16;
+      else if (glyph.column_size == 3) glyph_height = 32;
+      else if (glyph.column_size == 7) glyph_height = 64;
+
+      int offset_x = (int)floorf(glyph.xoffset * scale);
+      int offset_y = (int)floorf(glyph.yoffset * scale);
+      int width = (int)(glyph.columns * scale + 0.5f);
+      int height = (int)(glyph_height * scale + 0.5f);
+
+      for (int dx = 0; dx < width; dx++) {
+        int sx = (int)(dx / scale);
+        if (sx >= glyph.columns) sx = glyph.columns - 1;
+
+        uint64_t bits = 0;
+        switch (glyph.column_size) {
+          case 0:
+            bits = ((const uint8_t*)glyph.data)[sx];
+            break;
+          case 1:
+            bits = ((const uint16_t*)glyph.data)[sx];
+            break;
+          case 3:
+            bits = ((const uint32_t*)glyph.data)[sx];
+            break;
+          case 7:
+            bits = ((const uint64_t*)glyph.data)[sx];
+            break;
+        }
+
+        for (int dy = 0; dy < height; dy++) {
+          int sy = (int)(dy / scale);
+          if (sy >= glyph_height) sy = glyph_height - 1;
+
+          if (bits & (1ULL << sy)) {
+            int px = x + offset_x + dx;
+            int py = y + offset_y + dy;
+
+            if (px >= 0 && px < WIDTH && py >= 0 && py < HEIGHT) {
+              frame_buffer_[px] |= ((col_t)1 << py);
+            }
+          }
+        }
+      }
+
+      x += (int)(glyph.skip * scale + 0.5f);
+    }
+    str++;
+  }
+}
 
   void DrawText(const char* str,
                 int x, int y,
