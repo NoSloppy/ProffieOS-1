@@ -190,31 +190,79 @@ public:
     }
   }
 
-  void Draw(const Glyph& glyph, int x, int y) {
-    x += glyph.xoffset;
-    y += glyph.yoffset;
-    int begin = std::max<int>(0, -x);
-    int end = std::min<int>(glyph.columns, WIDTH - x);
-    col_t *pos = frame_buffer_ + x;
-    switch (glyph.column_size) {
-      case 0:
-        Draw2<uint8_t>(begin, end, pos, y, (const uint8_t*)glyph.data);
-        break;
+  void Draw(const Glyph& glyph, int x, int y, float scale = 1.0f) {
+    if (scale == 1.0f) {
+      x += glyph.xoffset;
+      y += glyph.yoffset;
+      int begin = std::max<int>(0, -x);
+      int end = std::min<int>(glyph.columns, WIDTH - x);
+      col_t *pos = frame_buffer_ + x;
+      switch (glyph.column_size) {
+        case 0:
+          Draw2<uint8_t>(begin, end, pos, y, (const uint8_t*)glyph.data);
+          break;
 #if MAX_GLYPH_HEIGHT >= 16
-      case 1:
-        Draw2<uint16_t>(begin, end, pos, y, (const uint16_t*)glyph.data);
-        break;
-#endif	
+        case 1:
+          Draw2<uint16_t>(begin, end, pos, y, (const uint16_t*)glyph.data);
+          break;
+#endif
 #if MAX_GLYPH_HEIGHT >= 32
-      case 3:
-        Draw2<uint32_t>(begin, end, pos, y, (const uint32_t*)glyph.data);
-        break;
-#endif	
+        case 3:
+          Draw2<uint32_t>(begin, end, pos, y, (const uint32_t*)glyph.data);
+          break;
+#endif
 #if MAX_GLYPH_HEIGHT >= 64
-      case 7:
-        Draw2<uint64_t>(begin, end, pos, y, (const uint64_t*)glyph.data);
-        break;
-#endif	
+        case 7:
+          Draw2<uint64_t>(begin, end, pos, y, (const uint64_t*)glyph.data);
+          break;
+#endif
+      }
+      return;
+    }
+    // Scaled rendering for custom display heights. e.g. 64x48
+    int glyph_height = 8;
+    if (glyph.column_size == 1) glyph_height = 16;
+    else if (glyph.column_size == 3) glyph_height = 32;
+    else if (glyph.column_size == 7) glyph_height = 64;
+
+    int offset_x = (int)floorf(glyph.xoffset * scale);
+    int offset_y = (int)floorf(glyph.yoffset * scale);
+    int width = (int)(glyph.columns * scale + 0.5f);
+    int height = (int)(glyph_height * scale + 0.5f);
+
+    for (int dx = 0; dx < width; dx++) {
+      int sx = (int)(dx / scale);
+      if (sx >= glyph.columns) sx = glyph.columns - 1;
+
+      uint64_t bits = 0;
+      switch (glyph.column_size) {
+        case 0:
+          bits = ((const uint8_t*)glyph.data)[sx];
+          break;
+        case 1:
+          bits = ((const uint16_t*)glyph.data)[sx];
+          break;
+        case 3:
+          bits = ((const uint32_t*)glyph.data)[sx];
+          break;
+        case 7:
+          bits = ((const uint64_t*)glyph.data)[sx];
+          break;
+      }
+
+      for (int dy = 0; dy < height; dy++) {
+        int sy = (int)(dy / scale);
+        if (sy >= glyph_height) sy = glyph_height - 1;
+
+        if (bits & (1ULL << sy)) {
+          int px = x + offset_x + dx;
+          int py = y + offset_y + dy;
+
+          if (px >= 0 && px < WIDTH && py >= 0 && py < HEIGHT) {
+            frame_buffer_[px] |= ((col_t)1 << py);
+          }
+        }
+      }
     }
   }
 
@@ -236,76 +284,17 @@ public:
     }
   }
 
-void DrawTextScaled(const char* str, int x, int y,const Glyph* font, float scale) {
-
-  while (*str) {
-    if (*str == '\n') {
-      x = 0;
-      y += (int)(16 * scale + 0.5f);
-    } else if (*str >= 0x20 && *str <= 0x7f) {
-      const Glyph& glyph = font[*str - 0x20];
-
-      int glyph_height = 8;
-      if (glyph.column_size == 1) glyph_height = 16;
-      else if (glyph.column_size == 3) glyph_height = 32;
-      else if (glyph.column_size == 7) glyph_height = 64;
-
-      int offset_x = (int)floorf(glyph.xoffset * scale);
-      int offset_y = (int)floorf(glyph.yoffset * scale);
-      int width = (int)(glyph.columns * scale + 0.5f);
-      int height = (int)(glyph_height * scale + 0.5f);
-
-      for (int dx = 0; dx < width; dx++) {
-        int sx = (int)(dx / scale);
-        if (sx >= glyph.columns) sx = glyph.columns - 1;
-
-        uint64_t bits = 0;
-        switch (glyph.column_size) {
-          case 0:
-            bits = ((const uint8_t*)glyph.data)[sx];
-            break;
-          case 1:
-            bits = ((const uint16_t*)glyph.data)[sx];
-            break;
-          case 3:
-            bits = ((const uint32_t*)glyph.data)[sx];
-            break;
-          case 7:
-            bits = ((const uint64_t*)glyph.data)[sx];
-            break;
-        }
-
-        for (int dy = 0; dy < height; dy++) {
-          int sy = (int)(dy / scale);
-          if (sy >= glyph_height) sy = glyph_height - 1;
-
-          if (bits & (1ULL << sy)) {
-            int px = x + offset_x + dx;
-            int py = y + offset_y + dy;
-
-            if (px >= 0 && px < WIDTH && py >= 0 && py < HEIGHT) {
-              frame_buffer_[px] |= ((col_t)1 << py);
-            }
-          }
-        }
-      }
-
-      x += (int)(glyph.skip * scale + 0.5f);
-    }
-    str++;
-  }
-}
-
   void DrawText(const char* str,
                 int x, int y,
-                const Glyph* font) {
+                const Glyph* font,
+                float scale = 1.0f) {
     while (*str) {
       if (*str == '\n') {
         x = 0;
-        y += 16;
+        y += (int)(16 * scale + 0.5f);
       } else if (*str >= 0x20 && *str <= 0x7f) {
-        Draw(font[*str - 0x20], x, y);
-        x += font[*str - 0x20].skip;
+        Draw(font[*str - 0x20], x, y, scale);
+        x += (int)(font[*str - 0x20].skip * scale + 0.5f);
       }
       str++;
     }

@@ -905,6 +905,18 @@ public:
   bool Parse(const char* cmd, const char* e) override {
     if (!strcmp(cmd, "setmessage") && e) {
       STDOUT << "Setting message: " << e << "\n";
+      // Mkae newlines work.
+      char* out = (char*)e;
+      for (int i = 0; e[i]; i++) {
+        if (e[i] == '\\' && e[i+1] == 'n') {
+          *out++ = '\n';
+          i++;  // skip the 'n'
+        } else {
+          *out++ = e[i];
+        }
+      }
+      *out = 0;
+      
       SetMessage(e);
       SetScreenNow(SCREEN_MESSAGE);
       return true;
