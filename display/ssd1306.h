@@ -436,7 +436,7 @@ public:
         return 200;  // redraw once every 200 ms
 
       case SCREEN_ERROR_MESSAGE:
-      case SCREEN_MESSAGE: {
+ case SCREEN_MESSAGE: {
         uint32_t t;
         if (font_config.ProffieOSTextMessageDuration != -1) {
           t = font_config.ProffieOSTextMessageDuration;
@@ -447,8 +447,8 @@ public:
         }
         
         // Add extra time for scrolling if text has many lines
-        if (message_line_count_ > this->NumberOfTextLines()) {
-          t += (message_line_count_ - this->NumberOfTextLines()) * 1000;
+        if (message_line_count_ > 2) {
+          t += (message_line_count_ - 2) * 1000;
         }
         
         if (t_ >= t) {
@@ -462,44 +462,37 @@ public:
       #else
         const Glyph* font = Starjedi10pt7bGlyphs;
       #endif
-        // Make text scroll after 1 second if it doesn't fit on screen 
         int y;
-        int lines_that_fit = this->NumberOfTextLines();
         
-        if (message_line_count_ <= lines_that_fit) {
-          // All lines fit on screen
-          if (message_line_count_ == 1) {
-            y = MessageY();
-          } else {
-            y = MessageTwoLineY() - (message_line_count_ - 2) * LineHeight();
-          }
-          DrawScreenText(message_, y, font);
+        if (message_line_count_ == 1) {
+          // Single line: centered
+          DrawScreenText(message_, MessageY(), font);
+        } else if (message_line_count_ == 2) {
+          DrawScreenText(message_, MessageTwoLineY(), font);
         } else {
-          // Text is too tall, need scrolling
+          // Three or more: begin in the normal two-line position,
+          // pause for one second, then smoothly scroll upward.
           uint32_t elapsed = millis() - message_start_time_;
-          int lines_to_scroll = message_line_count_ - lines_that_fit;
-          int max_scroll_pixels = lines_to_scroll * LineHeight() + LineHeight();
           int scroll_pixels = 0;
-          
+
           if (elapsed > 1000) {
             scroll_pixels = (elapsed - 1000) / 50;
-            if (scroll_pixels > max_scroll_pixels) scroll_pixels = max_scroll_pixels;
+
+            // Move enough for every line after the first two to enter view.
+            int max_scroll_pixels =
+                (message_line_count_ - 2) * LineHeight();
+
+            if (scroll_pixels > max_scroll_pixels) {
+              scroll_pixels = max_scroll_pixels;
+            }
           }
-          
-          // Find which line to start displaying from
-          int start_line = scroll_pixels / LineHeight();
-          int line_offset = scroll_pixels % LineHeight();
-          
-          // Build substring starting from start_line
-          const char* line_ptr = message_;
-          for (int i = 0; i < start_line && *line_ptr; i++) {
-            while (*line_ptr && *line_ptr != '\n') line_ptr++;
-            if (*line_ptr == '\n') line_ptr++;
-          }
-          
-          // Display: scroll from 2-line position
-          y = MessageTwoLineY() - line_offset;
-          DrawScreenText(line_ptr, y, font);
+
+          // Keep drawing the entire message. Do NOT skip completed lines:
+          // that is what caused the visible reposition/jump at line boundaries.
+          DrawScreenText(
+              message_,
+              MessageTwoLineY() - scroll_pixels,
+              font);
         }
         return 200;  // redraw once every 200 ms
       }
@@ -698,7 +691,8 @@ public:
     return 16;
   }
   virtual void DrawScreenText(const char* message, int y, const Glyph* font) {
-    display_->DrawText(message, 0, y, font);
+    float scale = (float)LineHeight() / 16.0f;  // Scale to fit LineHeight
+    display_->DrawText(message, 0, y, font, scale, LineHeight());
   }
   virtual void DrawScreenBatteryBar(const Glyph& bar, float percent) {
     display_->DrawBatteryBar(bar, percent);
