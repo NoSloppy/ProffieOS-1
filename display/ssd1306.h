@@ -469,18 +469,15 @@ public:
         } else {
           int total_height = (message_line_count_ - 1) * LineHeight();
           int available_height = HEIGHT - MessageTwoLineY();
-          
           if (total_height > available_height) {
-            // Text doesn't fit; scroll after 1 second delay
             uint32_t elapsed = millis() - message_start_time_;
+            int max_scroll = total_height - available_height;
+            int scroll_amount = 0;
             if (elapsed > 1000) {
-              int scroll_amount = (elapsed - 1000) / 50;  // pixels per 50ms
-              int max_scroll = total_height - available_height;
+              scroll_amount = (elapsed - 1000) / 50;  // pixels per 50ms
               if (scroll_amount > max_scroll) scroll_amount = max_scroll;
-              y = MessageTwoLineY() - scroll_amount;
-            } else {
-              y = MessageTwoLineY() - (message_line_count_ - 2) * LineHeight();
             }
+            y = MessageTwoLineY() - (message_line_count_ - 2) * LineHeight() - scroll_amount;
           } else {
             // Fits on screen normally
             y = MessageTwoLineY() - (message_line_count_ - 2) * LineHeight();
