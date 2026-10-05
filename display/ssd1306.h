@@ -474,11 +474,8 @@ public:
           }
         } else {
           if (frame_available_ && advance) frame_count_++;
-          if (t_ < effect_display_duration_) {
-            if (!(looped_frames_ == 1 && already_converted_)) {
-              ConvertToNative();
-              already_converted_ = (looped_frames_ == 1);
-            }
+          if (looped_frames_ == 1 || t_ < effect_display_duration_) {
+            ConvertToNative();
             frame_available_ = false;
             if (font_config.ProffieOSAnimationFrameRate > 0.0) {
               return 1000 / font_config.ProffieOSAnimationFrameRate;
@@ -500,11 +497,16 @@ public:
     }
   }
 
-  void SB_On(EffectLocation location) override {
+  bool ShouldDelayOnImage() {
     // Delay on.bmp until boot,font, or name message has been displayed for its full duration
-    if (current_effect_ == &img_.IMG_font) return;
-    if (current_effect_ == &img_.IMG_boot) return;
-    if (screen_ == SCREEN_STARTUP || screen_ == SCREEN_MESSAGE || screen_ == SCREEN_ERROR_MESSAGE) return;
+    if (current_effect_ == &img_.IMG_font) return true;
+    if (current_effect_ == &img_.IMG_boot) return true;
+    if (screen_ == SCREEN_STARTUP || screen_ == SCREEN_MESSAGE || screen_ == SCREEN_ERROR_MESSAGE) return true;
+    return false;
+  }
+
+  void SB_On(EffectLocation location) override {
+    if (ShouldDelayOnImage()) return;
     if (!ShowFile(&img_.IMG_on, font_config.ProffieOSOnImageDuration)) {
       ShowDefault();
       last_delay_ = t_ = 0;
@@ -513,6 +515,7 @@ public:
   }
 
   void SB_On2(EffectLocation location) override {
+    if (ShouldDelayOnImage()) return;
     if (img_.IMG_out) {
       ShowFileWithSoundLength(&img_.IMG_out, font_config.ProffieOSOutImageDuration);
     } else {
@@ -678,7 +681,7 @@ public:
     file_.Play(effect);
     frame_available_ = false;
     frame_count_ = 0;
-    already_converted_ = false;
+    got_frame_ = false;
     screen_ = SCREEN_IMAGE;
     eof_ = false;
     current_effect_ = effect;
@@ -701,7 +704,7 @@ public:
     file_.Play(file);
     frame_available_ = false;
     frame_count_ = 0;
-    already_converted_ = false;
+    got_frame_ = false;
     SetScreenNow(SCREEN_IMAGE);
     eof_ = false;
   }
@@ -727,7 +730,7 @@ public:
     uint32_t file_end = 0;
     // STDERR << "ReadImage " << f->Tell() << " size = " << f->FileSize() << "\n";
     if (ypos_ >= looped_frames_ || ypos_ == 0) {
-      f->Seek(0);
+      if (looped_frames_ > 1) f->Seek(0);
       ypos_ = 0;
       uint32_t file_start = f->Tell();
       int a = f->Read();
@@ -735,7 +738,9 @@ public:
       int width, height;
       switch (TAG2(a, b)) {
         default:
-          STDERR << "Unknown image format. a=" << a << " b=" << b << " pos=" << f->Tell() << "\n";
+          if (!got_frame_) {
+            STDERR << "Unknown image format. a=" << a << " b=" << b << " pos=" << f->Tell() << "\n";
+          }
           return false;
 
         case TAG2('P', '4'):
@@ -843,10 +848,6 @@ public:
       return true;
     }
     if (!frame_available_) {
-      if (looped_frames_ == 1 && ypos_ > 0) {
-        frame_available_ = true;
-        return true;
-      }
       // STDERR << "ADVANCE=" << advance_ << " last_file_pos_= " << last_state_.file_pos << " ypos=" << last_state_.ypos << "\n";
       if (!advance_) {
         file_.Seek(last_state_.file_pos);
@@ -872,8 +873,11 @@ public:
       if (tmp) {
         frame_available_ = true;
         last_state_ = state;
+        got_frame_ = true;
       } else {
-        STDERR << "read image fail\n";
+        if (!got_frame_) {
+          STDERR << "read image fail\n";
+        }
         eof_ = true;
       }
     }
@@ -918,7 +922,7 @@ private:
   int32_t frame_count_ = 0;
   volatile int32_t looped_frames_ = 0;
   int32_t ypos_ = 0;
-  bool already_converted_ = false;
+  bool got_frame_ = false;
   bool lock_fb_ = false;
   ReadState last_state_;
   volatile bool advance_ = true;
