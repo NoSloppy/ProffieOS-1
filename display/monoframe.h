@@ -287,14 +287,25 @@ public:
   void DrawText(const char* str,
                 int x, int y,
                 const Glyph* font,
-                float scale = 1.0f) {
+                float scale = 1.0f,
+                int line_height = 16) {
     while (*str) {
       if (*str == '\n') {
         x = 0;
-        y += (int)(16 * scale + 0.5f);
+        y += line_height;
       } else if (*str >= 0x20 && *str <= 0x7f) {
-        Draw(font[*str - 0x20], x, y, scale);
-        x += (int)(font[*str - 0x20].skip * scale + 0.5f);
+        const Glyph& glyph = font[*str - 0x20];
+        int glyph_width = (int)(glyph.skip * scale + 0.5f);
+
+        // Forced wrap: if this glyph won't fit on the current line,
+        // move to the next line before drawing it.
+        if (x > 0 && x + glyph_width > WIDTH) {
+          x = 0;
+          y += line_height;
+        }
+
+        Draw(glyph, x, y, scale);
+        x += glyph_width;
       }
       str++;
     }
