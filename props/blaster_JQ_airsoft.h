@@ -26,6 +26,9 @@ Defines for use in the config file:
     Switch MODE               - 1x click MODE.
     Play Force Effect         - 2x click MODE.
     Start/Stop Track          - 3x click MODE.
+    Next Track                - 3x click and Hold MODE (auto-plays next track, when either playing OR stopped)
+                                * Note - Tracks should be stored in either <font>/tracks/*.wav, or in common/tracks/*.wav.
+                                         and will be selected in alphabetical order.
     Color Change              - 4x click and Hold MODE (cycle through color list one at a time)
                                 Colors at start are Preset defaults, followed by Red, Blue, Green, White, ElectricViolet, Yellow, and Orange.
     Next Preset               - 1x Click AND Hold MODE until preset changes.
@@ -280,6 +283,107 @@ BlasterMode blaster_mode = BLASTER_DEFAULT_MODE;
     PropBase::DoMotion(Vec3(0), clear);
   }
 
+  void Loop() override {
+    Blaster::Loop();
+
+    if (track_player_ && !track_player_->isPlaying()) {
+      PVLOG_NORMAL << "** Track ended\n";
+      track_player_.Free();
+    }
+  }
+
+  bool chdir(const StringPiece dir) override {
+    if (track_player_) {
+      track_player_->Stop();
+      track_player_.Free();
+    }
+
+    bool ret = PropBase::chdir(dir);
+    track_[0] = 0;
+    return ret;
+  }
+
+  bool PlayTrack() {
+    if (!track_[0]) {
+      if (!RunCommandAndFindNextSortedLine<128>(
+              "list_current_tracks", nullptr, nullptr, track_, false)) {
+        return false;
+      }
+    }
+
+    PVLOG_NORMAL << "** Playing track = " << track_ << "\n";
+
+    MountSDCard();
+    EnableAmplifier();
+
+    track_player_ = GetFreeWavPlayer();
+    if (track_player_) {
+      track_player_->Play(track_);
+      return true;
+    }
+
+    return false;
+  }
+
+  void PlayStopTrack() {
+    if (track_player_ && track_player_->isPlaying()) {
+      track_player_->Stop();
+      track_player_.Free();
+      PVLOG_NORMAL << "** Track stopped\n";
+      return;
+    }
+
+    if (track_player_) {
+      track_player_.Free();
+    }
+
+    PlayTrack();
+  }
+
+  void NextTrack() {
+    // Hot switch: stop the current track first.
+    if (track_player_ && track_player_->isPlaying()) {
+      track_player_->Stop();
+      track_player_.Free();
+    }
+
+    char next_track[128];
+    next_track[0] = 0;
+
+    if (!RunCommandAndFindNextSortedLine<128>(
+            "list_current_tracks", nullptr, track_, next_track, false)) {
+      if (!RunCommandAndFindNextSortedLine<128>(
+              "list_current_tracks", nullptr, nullptr, next_track, false)) {
+        return;
+      }
+    }
+
+    strcpy(track_, next_track);
+
+    PVLOG_NORMAL << "** NextTrack: " << track_ << "\n";
+
+    PlayTrack();
+  }
+
+  bool Parse(const char *cmd, const char* arg) override {
+    if (PropBase::Parse(cmd, arg)) return true;
+
+    if (!strcmp(cmd, "list_current_tracks")) {
+      LOCK_SD(true);
+      for (const char* dir = current_directory; dir; dir = next_current_directory(dir)) {
+        PathHelper path(dir, "tracks");
+        ListTracks(path);
+      }
+      LOCK_SD(false);
+      return true;
+    }
+
+    if (!strcmp(cmd, "fire")) {
+      Event(BUTTON_FIRE, EVENT_PRESSED);
+      return true;
+    }
+    return false;
+  }
   bool Event2(enum BUTTON button, EVENT event, uint32_t modifiers) override {
     switch (EVENTID(button, event, modifiers)) {
 
@@ -307,7 +411,11 @@ BlasterMode blaster_mode = BLASTER_DEFAULT_MODE;
         return true;
 
       case EVENTID(BUTTON_MODE_SELECT, EVENT_THIRD_SAVED_CLICK_SHORT, MODE_ON):
-        StartOrStopTrack();
+        PlayStopTrack();
+        return true;
+
+      case EVENTID(BUTTON_MODE_SELECT, EVENT_THIRD_HELD_MEDIUM, MODE_ON):
+        NextTrack();
         return true;
 
       case EVENTID(BUTTON_MODE_SELECT, EVENT_FOURTH_HELD_MEDIUM, MODE_ON):
@@ -378,6 +486,9 @@ BlasterMode blaster_mode = BLASTER_DEFAULT_MODE;
     }
   }
 
+  RefPtr<BufferedWavPlayer> track_player_;
+  char track_[128] = "";
+
   bool auto_firing_ = false;
   int shots_fired_ = 0;
   bool is_jammed_ = false;
@@ -443,11 +554,6 @@ public:
     font_config(*getPtr<BlasterDisplayConfigFile>()) {
   }
 
-  // void DrawScreenText(const char* message, int y, const Glyph* font) override {
-  //   float scale = (float)this->LineHeight() / 16.0f;
-  //   this->display_->DrawText(
-  //       message, 0, y, font, scale, this->LineHeight());
-  // }
 void DrawScreenText(const char* message, int y, const Glyph* font) override {
   float scale = 0.8f * (float)this->LineHeight() / 16.0f;
   this->display_->DrawText(message, 0, y, font, scale, this->LineHeight());
