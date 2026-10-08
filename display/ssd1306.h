@@ -274,9 +274,9 @@ class Combine {
 
 template<int Width, class col_t, typename PREFIX = ByteArray<>>
 class StandardDisplayController : public DisplayControllerBase<Width, col_t>, public SaberBase, private AudioStreamWork
-// #ifdef ENABLE_DEVELOPER_COMMANDS
+#ifdef ENABLE_DEVELOPER_COMMANDS
   , CommandParser
-// #endif
+#endif
 {
 protected:
   DisplayEffects<PREFIX> &img_;
@@ -391,7 +391,7 @@ public:
           // Allow for custom scaling
           DrawScreenText("p-os", BootY(), Starjedi10pt7bGlyphs);
         } else {
-          DrawScreenText("proffieos", 15, Starjedi10pt7bGlyphs);
+          DrawScreenText("proffieos", BootY(), Starjedi10pt7bGlyphs);
         }
         DrawScreenText(version, 31, Starjedi10pt7bGlyphs);
         if (display_->HardwareHeight() > 32) {
@@ -409,10 +409,8 @@ public:
           boot_duration = 3500;
         }
         // Add extra time if boot text exceeds screen height
-        int boot_lines = (display_->HardwareHeight() > 32) ? 4 : 2;
-        if (boot_lines > 3) {
-          boot_duration += (boot_lines - 3) * 2000;
-        }
+        int boot_lines = NumberOfTextLines();
+        if (boot_lines > 3) boot_duration += (boot_lines - 3) * 2000;
         return boot_duration;
       }
 
@@ -462,8 +460,7 @@ public:
       #else
         const Glyph* font = Starjedi10pt7bGlyphs;
       #endif
-        int y;
-        
+
         if (message_line_count_ == 1) {
           // Single line: centered
           DrawScreenText(message_, MessageY(), font);
@@ -542,11 +539,16 @@ public:
     }
   }
 
-  void SB_On(EffectLocation location) override {
+  bool ShouldDelayOnImage() {
     // Delay on.bmp until boot,font, or name message has been displayed for its full duration
-    if (current_effect_ == &img_.IMG_font) return;
-    if (current_effect_ == &img_.IMG_boot) return;
-    if (screen_ == SCREEN_STARTUP || screen_ == SCREEN_MESSAGE || screen_ == SCREEN_ERROR_MESSAGE) return;
+    if (current_effect_ == &img_.IMG_font) return true;
+    if (current_effect_ == &img_.IMG_boot) return true;
+    if (screen_ == SCREEN_STARTUP || screen_ == SCREEN_MESSAGE || screen_ == SCREEN_ERROR_MESSAGE) return true;
+    return false;
+  }
+
+  void SB_On(EffectLocation location) override {
+    if (ShouldDelayOnImage()) return;
     if (!ShowFile(&img_.IMG_on, font_config.ProffieOSOnImageDuration)) {
       ShowDefault();
       last_delay_ = t_ = 0;
@@ -555,8 +557,11 @@ public:
   }
 
   void SB_On2(EffectLocation location) override {
+    if (ShouldDelayOnImage()) return;
     if (img_.IMG_out) {
       ShowFileWithSoundLength(&img_.IMG_out, font_config.ProffieOSOutImageDuration);
+    } else {
+      ShowDefault();
     }
   }
 
@@ -863,6 +868,7 @@ public:
         layout_ = LAYOUT_LANDSCAPE;
         looped_frames_ = height / HEIGHT;
       } else {
+        layout_ = LAYOUT_PORTRAIT;
         looped_frames_ = height / WIDTH;
       }
       if (current_effect_ == &img_.IMG_on) {
@@ -956,14 +962,19 @@ public:
     file_.Close();
   }
 
-// #ifdef ENABLE_DEVELOPER_COMMANDS
+#ifdef ENABLE_DEVELOPER_COMMANDS
   bool Parse(const char* cmd, const char* e) override {
     if (!strcmp(cmd, "setmessage") && e) {
       STDOUT << "Setting message: " << e << "\n";
-      // Mkae newlines work.
-      char* out = (char*)e;
-      for (int i = 0; e[i]; i++) {
-        if (e[i] == '\\' && e[i+1] == 'n') {
+
+      // Make newlines work
+      char buf[sizeof(message_)];
+      size_t len = strlen(e);
+      if (len >= sizeof(buf)) len = sizeof(buf) - 1;
+
+      char* out = buf;
+      for (size_t i = 0; i < len; i++) {
+        if (e[i] == '\\' && e[i + 1] == 'n') {
           *out++ = '\n';
           i++;  // skip the 'n'
         } else {
@@ -971,14 +982,14 @@ public:
         }
       }
       *out = 0;
-      
-      SetMessage(e);
+
+      SetMessage(buf);
       SetScreenNow(SCREEN_MESSAGE);
       return true;
     }
     return false;
   }
-// #endif
+#endif
 
 private:
   // Have text scroll if longer than screen height
