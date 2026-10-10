@@ -61,12 +61,15 @@ On-Demand battery level - A layer built into the blade styles that reacts
                           as the battery gets weaker, changing blade color
                           from Green to Red, and the blade length shortens.
 
-User Effects: 
-These equate to Fett263 "Special Abilities" 1-8.
-- Can be built into blade style code to trigger anything that takes an EFFECT_XXXXX argument.
+User Effects Info:
+These equate to Fett263 "Special Abilities" 1-8. They can be built into blade style code
+to trigger anything that takes an EFFECT_XXXXX argument.
 EFFECT_USER1 through 4 work when blade is ON.
+  - 1 button sabers: 1(L) and 2(R) while NOT pointing UP. 3(L) and 4(R) while pointing UP.
+  - 2 button sabers: 1(L) and 2(R) while holding POW.     3(L) and 4(R) while holding AUX.
 EFFECT_USER5 through 8 work when blade is OFF.
-USER 3, 4, 7, 8 are done "while pointing up" on 1 button setups, or the AUX button for 2 button sabers.
+  - 1 button sabers: 5(L) and 6(R) while NOT pointing UP. 7(L) and 8(R) while pointing UP.
+  - 2 button sabers: 5(L) and 6(R) while holding POW.     7(L) and 8(R) while holding AUX.
 
 EFFECT_POWERSAVE        - PowerSave Dim Blade. Blade style should use a Mix or an AlphaL that applies
                           a transparent amount of Black to the base blade color.
@@ -231,10 +234,12 @@ Quote Player              - 3x Click POW.
                             * Does Force effect if no quote(s) exist.
 Toggle Sequential or
        Random quotes      - 3x Click POW (while pointing DOWN).
-User Effect 5             - Hold POW then Rotate Left 60 degrees. (keep holding POW until executed)
-User Effect 6             - Hold POW then Rotate Right 60 degrees. (keep holding POW until executed)
+User Effect 5             - Hold POW then Rotate Left  60 degrees. (while NOT pointing UP. Keep holding POW until executed)
+User Effect 6             - Hold POW then Rotate Right 60 degrees. (while NOT pointing UP. Keep holding POW until executed)
+User Effect 7             - Hold POW then Rotate Left  60 degrees. (while pointing UP.     Keep holding POW until executed)
+User Effect 8             - Hold POW then Rotate Right 60 degrees. (while pointing UP.     Keep holding POW until executed)
                             * Requires EFFECT_USER in blade style.
-                            * Note the same controls when blade is ON are USER 1 and 2.
+                            * Note the same controls when blade is ON are USER 1, 2, 3 and 4.
 Trigger Blade ID Scan     - 4x Click POW and Hold, release after one second (NOT pointing UP).
 Next Blade Array          - 4x Click POW and Hold, release after one second (while pointing UP).
                             * Cycles to the next blade array in BladeConfig.
@@ -298,10 +303,12 @@ Force Push                - Push hilt perpendicularly from a stop.
                             Plays push.wav if it exists, otherwise force.wav.
 PowerSave Dim Blade       - 4x Click and Hold POW (while pointing UP).
 
-User Effect 1             - Hold POW then Rotate Left 60 degrees. (keep holding POW until executed)
-User Effect 2             - Hold POW then Rotate Right 60 degrees. (keep holding POW until executed)
+User Effect 1             - Hold POW then Rotate Left  60 degrees. (while NOT pointing UP. Keep holding POW until executed)
+User Effect 2             - Hold POW then Rotate Right 60 degrees. (while NOT pointing UP. Keep holding POW until executed)
+User Effect 3             - Hold POW then Rotate Left  60 degrees. (while pointing UP.     Keep holding POW until executed)
+User Effect 4             - Hold POW then Rotate Right 60 degrees. (while pointing UP.     Keep holding POW until executed)
                             * Require EFFECT_USER in blade style.
-                            * Note the same controls when blade is OFF are USER 5 and 6.
+                            * Note the same controls when blade is OFF are USER 5, 6, 7 and 8.
 
 Turn OFF blade            - Hold POW until off -or - Twist if using #define BC_TWIST_OFF.
 Turn OFF bypass postoff   - Turn OFF (while pointing UP).
@@ -321,8 +328,10 @@ swing
 1 click held            - enter/exit scroll presets
     then twist          - turn blade ON muted (back and forth twist)
     then clash          - enter BC volume menu
-    then rotate left    - user effect 5 (keep holding POW until executed)
-    then rotate right   - user effect 6 (keep holding POW until executed)
+    then rotate left    - user effect 5 (while NOT pointing UP. Keep holding POW until executed)
+                          user effect 7 (while pointing UP.     Keep holding POW until executed)
+    then rotate right   - user effect 6 (while NOT pointing UP. Keep holding POW until executed)
+                          user effect 8 (while pointing UP.     Keep holding POW until executed)
 2 clicks                - turn blade ON muted
 2 clicks held           - blade length edit, or
                           OS system menu instead (requires #define MENU_SPEC_TEMPLATE)
@@ -356,8 +365,10 @@ twist                   - turn blade ON (requires #define BC_TWIST_ON)
                           first preset fast (pointing up)
     then clash          - lockup
                           drag (pointing down)
-    then rotate left    - user effect 1 (keep holding POW until executed)
-    then rotate right   - user effect 2 (keep holding POW until executed)
+    then rotate left    - user effect 1 (while NOT pointing UP. Keep holding POW until executed)
+                          user effect 3 (while pointing UP.     Keep holding POW until executed)
+    then rotate right   - user effect 2 (while NOT pointing UP. Keep holding POW until executed)
+                          user effect 4 (while pointing UP.     Keep holding POW until executed)
 2 clicks                - blaster deflection
 2 clicks long           - force
                           toggle battle mode (pointing up)
@@ -432,9 +443,9 @@ Quote Player              - 3x Click POW.
 Toggle Sequential or
        Random quotes      - 3x Click POW (while pointing DOWN).
 
-User Effect 5             - Hold POW then Rotate Left 60 degrees. (keep holding POW until executed)
+User Effect 5             - Hold POW then Rotate Left  60 degrees. (keep holding POW until executed)
 User Effect 6             - Hold POW then Rotate Right 60 degrees. (keep holding POW until executed)
-User Effect 7             - Hold AUX then Rotate Left 60 degrees. (keep holding AUX until executed)
+User Effect 7             - Hold AUX then Rotate Left  60 degrees. (keep holding AUX until executed)
 User Effect 8             - Hold AUX then Rotate Right 60 degrees. (keep holding AUX until executed)
                             * Requires EFFECT_USER in blade style.
                             * Note the same controls when blade is ON are USER 1,2,3,4.
@@ -503,9 +514,9 @@ Force Push                - Push hilt perpendicularly from a stop.
                             Plays push.wav if it exists, otherwise force.wav.
 PowerSave Dim Blade       - Hold AUX then Twist (while pointing UP).
 
-User Effect 1             - Hold POW then Rotate Left 60 degrees. (keep holding POW until executed)
+User Effect 1             - Hold POW then Rotate Left  60 degrees. (keep holding POW until executed)
 User Effect 2             - Hold POW then Rotate Right 60 degrees. (keep holding POW until executed)
-User Effect 3             - Hold AUX then Rotate Left 60 degrees. (keep holding AUX until executed)
+User Effect 3             - Hold AUX then Rotate Left  60 degrees. (keep holding AUX until executed)
 User Effect 4             - Hold AUX then Rotate Right 60 degrees. (keep holding AUX until executed)
                             * Require EFFECT_USER in blade style.
                             * Note the same controls when blade is OFF are USER 5,6,7,8.
@@ -691,10 +702,12 @@ push                    - force push
 |                                        * Does Force effect if no quote(s) exist.
 | Toggle Sequential or Random quotes   - 3x Click and Hold POW (while pointing Main Blade DOWN).
 |
-| User Effect 5                        - Hold POW then Rotate Left 60 degrees. (keep holding POW until executed)
-| User Effect 6                        - Hold POW then Rotate Right 60 degrees. (keep holding POW until executed)
+| User Effect 5                        - Hold POW then Rotate Left  60 degrees. (while NOT pointing UP. Keep holding POW until executed)
+| User Effect 6                        - Hold POW then Rotate Right 60 degrees. (while NOT pointing UP. Keep holding POW until executed)
+| User Effect 7                        - Hold POW then Rotate Left  60 degrees. (while pointing UP.     Keep holding POW until executed)
+| User Effect 8                        - Hold POW then Rotate Right 60 degrees. (while pointing UP.     Keep holding POW until executed)
 |                                        * Requires EFFECT_USER in blade style.
-|                                        * Note the same controls when blade is ON are USER 1 and 2.
+|                                        * Note the same controls when blade is ON are USER 1, 2, 3 and 4.
 ||| NOT AVAILABLE Trigger Blade ID Scan
 ||| NOT AVAILABLE Next Blade Array
 |
@@ -752,10 +765,12 @@ push                    - force push
 | Force Push                           - Push hilt perpendicularly from a stop.
 | PowerSave Dim Blade                  - 4x Click and Hold POW (while pointing Main Blade UP)
 |
-| User Effect 1                        - Hold POW then Rotate Left 60 degrees. (keep holding POW until executed)
-| User Effect 2                        - Hold POW then Rotate Right 60 degrees. (keep holding POW until executed)
+| User Effect 1                        - Hold POW then Rotate Left  60 degrees. (while NOT pointing UP. Keep holding POW until executed)
+| User Effect 2                        - Hold POW then Rotate Right 60 degrees. (while NOT pointing UP. Keep holding POW until executed)
+| User Effect 3                        - Hold POW then Rotate Left  60 degrees. (while pointing UP.     Keep holding POW until executed)
+| User Effect 4                        - Hold POW then Rotate Right 60 degrees. (while pointing UP.     Keep holding POW until executed)
 |                                        * Require EFFECT_USER in blade style.
-|                                        * Note the same controls when blade is OFF are USER 5 and 6.
+|                                        * Note the same controls when blade is OFF are USER 5, 6, 7 and 8.
 |
 | ---------------------------------------
 |  1 button dual blade summary by clicks
@@ -775,8 +790,10 @@ push                    - force push
 | 1 click held            - enter/exit scroll presets
 |     then twist          - turn main blade ON first muted  (back and forth twist)
 |     then clash          - enter BC volume menu
-|     then rotate left    - user effect 5 (keep holding POW until executed)
-|     then rotate right   - user effect 6 (keep holding POW until executed)
+|     then rotate left    - user effect 5 (while NOT pointing UP. Keep holding POW until executed)
+|                           user effect 7 (while pointing UP.     Keep holding POW until executed)
+|     then rotate right   - user effect 6 (while NOT pointing UP. Keep holding POW until executed)
+|                           user effect 8 (while pointing UP.     Keep holding POW until executed)
 |     then swing          - turn both blades ON muted
 | 2 clicks                - turn second blade ON
 | 2 clicks long           - turn both blades ON
@@ -810,8 +827,10 @@ push                    - force push
 |                           next preset fast
 |                           previous preset fast (main blade pointing down)
 |     then clash          - lockup
-|     then rotate left    - user effect 1 (keep holding POW until executed)
-|     then rotate right   - user effect 2 (keep holding POW until executed)
+|     then rotate left    - user effect 1 (while NOT pointing UP. Keep holding POW until executed)
+|                           user effect 3 (while pointing UP.     Keep holding POW until executed)
+|     then rotate right   - user effect 2 (while NOT pointing UP. Keep holding POW until executed)
+|                           user effect 4 (while pointing UP.     Keep holding POW until executed)
 | 2 clicks                - lightning block (not pointing either blade up).click to end.
 |                         - toggle battle mode (pointing either blade up)
 | 2 clicks long           - force
@@ -2856,7 +2875,7 @@ any # of buttons
 // User Effects a.k.a. "Special Abilities" ©Fett263
 #if NUM_BUTTONS == 1
 
-      case EVENTID(BUTTON_NONE, EVENT_TWIST_RIGHT, MODE_ON | BUTTON_POWER):
+      case EVENTID(BUTTON_NONE, EVENT_TWIST_LEFT, MODE_ON | BUTTON_POWER):
         if (isPointingUp()) {
           PVLOG_DEBUG << "**** EFFECT_USER3 **\n";
           SaberBase::DoEffect(EFFECT_USER3, 0);
@@ -2866,7 +2885,7 @@ any # of buttons
         }
         return true;
 
-      case EVENTID(BUTTON_NONE, EVENT_TWIST_LEFT, MODE_ON | BUTTON_POWER):
+      case EVENTID(BUTTON_NONE, EVENT_TWIST_RIGHT, MODE_ON | BUTTON_POWER):
         if (isPointingUp()) {
           PVLOG_DEBUG << "**** EFFECT_USER4 **\n";
           SaberBase::DoEffect(EFFECT_USER4, 0);
@@ -2876,7 +2895,7 @@ any # of buttons
         }
         return true;
 
-      case EVENTID(BUTTON_NONE, EVENT_TWIST_RIGHT, MODE_OFF | BUTTON_POWER):
+      case EVENTID(BUTTON_NONE, EVENT_TWIST_LEFT, MODE_OFF | BUTTON_POWER):
         if (isPointingUp()) {
           PVLOG_DEBUG << "**** EFFECT_USER7 **\n";
           SaberBase::DoEffect(EFFECT_USER7, 0);
@@ -2886,7 +2905,7 @@ any # of buttons
         }
         return true;
 
-      case EVENTID(BUTTON_NONE, EVENT_TWIST_LEFT, MODE_OFF | BUTTON_POWER):
+      case EVENTID(BUTTON_NONE, EVENT_TWIST_RIGHT, MODE_OFF | BUTTON_POWER):
         if (isPointingUp()) {
           PVLOG_DEBUG << "**** EFFECT_USER8 **\n";
           SaberBase::DoEffect(EFFECT_USER8, 0);
@@ -2898,42 +2917,42 @@ any # of buttons
 
 # else  // more than 1-button
 
-      case EVENTID(BUTTON_NONE, EVENT_TWIST_RIGHT, MODE_ON | BUTTON_POWER):
+      case EVENTID(BUTTON_NONE, EVENT_TWIST_LEFT, MODE_ON | BUTTON_POWER):
         PVLOG_DEBUG << "**** EFFECT_USER1 **\n";
         SaberBase::DoEffect(EFFECT_USER1, 0);
         return true;
 
-      case EVENTID(BUTTON_NONE, EVENT_TWIST_LEFT, MODE_ON | BUTTON_POWER):
+      case EVENTID(BUTTON_NONE, EVENT_TWIST_RIGHT, MODE_ON | BUTTON_POWER):
         PVLOG_DEBUG << "**** EFFECT_USER2 **\n";
         SaberBase::DoEffect(EFFECT_USER2, 0);
         return true;
 
-      case EVENTID(BUTTON_NONE, EVENT_TWIST_RIGHT, MODE_ON | BUTTON_AUX):
+      case EVENTID(BUTTON_NONE, EVENT_TWIST_LEFT, MODE_ON | BUTTON_AUX):
         PVLOG_DEBUG << "**** EFFECT_USER3 **\n";
         SaberBase::DoEffect(EFFECT_USER3, 0);
         return true;
 
-      case EVENTID(BUTTON_NONE, EVENT_TWIST_LEFT, MODE_ON | BUTTON_AUX):
+      case EVENTID(BUTTON_NONE, EVENT_TWIST_RIGHT, MODE_ON | BUTTON_AUX):
         PVLOG_DEBUG << "**** EFFECT_USER4 **\n";
         SaberBase::DoEffect(EFFECT_USER4, 0);
         return true;
 
-      case EVENTID(BUTTON_NONE, EVENT_TWIST_RIGHT, MODE_OFF | BUTTON_POWER):
+      case EVENTID(BUTTON_NONE, EVENT_TWIST_LEFT, MODE_OFF | BUTTON_POWER):
         PVLOG_DEBUG << "**** EFFECT_USER5 **\n";
         SaberBase::DoEffect(EFFECT_USER5, 0);
         return true;
 
-      case EVENTID(BUTTON_NONE, EVENT_TWIST_LEFT, MODE_OFF | BUTTON_POWER):
+      case EVENTID(BUTTON_NONE, EVENT_TWIST_RIGHT, MODE_OFF | BUTTON_POWER):
         PVLOG_DEBUG << "**** EFFECT_USER6 **\n";
         SaberBase::DoEffect(EFFECT_USER6, 0);
         return true;
 
-      case EVENTID(BUTTON_NONE, EVENT_TWIST_RIGHT, MODE_OFF | BUTTON_AUX):
+      case EVENTID(BUTTON_NONE, EVENT_TWIST_LEFT, MODE_OFF | BUTTON_AUX):
         PVLOG_DEBUG << "**** EFFECT_USER7 **\n";
         SaberBase::DoEffect(EFFECT_USER7, 0);
         return true;
 
-      case EVENTID(BUTTON_NONE, EVENT_TWIST_LEFT, MODE_OFF | BUTTON_AUX):
+      case EVENTID(BUTTON_NONE, EVENT_TWIST_RIGHT, MODE_OFF | BUTTON_AUX):
         PVLOG_DEBUG << "**** EFFECT_USER8 **\n";
         SaberBase::DoEffect(EFFECT_USER8, 0);
         return true;
