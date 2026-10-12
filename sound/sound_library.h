@@ -104,6 +104,18 @@ private:
 
 #define SOUNDQ (getPtr<SoundQueueSingleton>())
 
+// If error audio is queued or playing, enqueue *effect (or a beep) to run after it.
+// Returns true when the caller should not play the sound now.
+inline bool QueueSoundAfterErrors(Effect* effect, float beep_len, float beep_freq) {
+  if (!SOUNDQ->holding_errors()) return false;
+  if (effect && *effect) {
+    SOUNDQ->Play(SoundToPlayFileID(effect->RandomFile()));
+  } else if (beep_len > 0.0f) {
+    SOUNDQ->Play(SoundToPlayBeep(beep_len, beep_freq, false));
+  }
+  return true;
+}
+
 inline bool PlayErrorMessage(const char* filename) {
   // Check font dirs, then errors folder before queuing so Talkie is suppressed only if WAV exists.
   bool found = false;

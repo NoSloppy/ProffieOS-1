@@ -134,6 +134,7 @@ void DodgeSound(uint32_t millis) {
 
 // Fwd declaration - Defined in sound_library.h after SoundQueueSingleton and SOUNDQ are available.
 bool PlayErrorMessage(const char* filename);
+bool QueueSoundAfterErrors(Effect* effect, float beep_len = 0.0f, float beep_freq = 0.0f);
 
 size_t WhatUnit(class BufferedWavPlayer* player) {
   if (!player) return -1;

@@ -91,16 +91,18 @@ private:
 
 class SoundToPlayBeep : public SoundToPlayBase {
 public:
-  SoundToPlayBeep(float length, float freq) : length_(length), freq_(freq) {}
+  SoundToPlayBeep(float length, float freq, bool dodge = true)
+    : length_(length), freq_(freq), dodge_(dodge) {}
   bool Play(BufferedWavPlayer* player) override {
     beeper.Beep(length_, freq_);
     return true;
   }
   bool needs_player() const override { return false; }
-  bool wants_dodge() const override { return true; }
+  bool wants_dodge() const override { return dodge_; }
 private:
   float length_;
   float freq_;
+  bool dodge_;
 };
 
 class SoundToPlayFileID : public SoundToPlayBase {
@@ -347,6 +349,15 @@ public:
     }
   }
   bool busy() const { return busy_; }
+  bool pending() const { return queue_.size() != 0; }
+  // True while an error wav/talkie/beeper is playing or still queued.
+  bool holding_errors() {
+    if (dodge_while_busy_) return true;
+    for (size_t i = 0; i < queue_.size(); i++) {
+      if (queue_[i]->wants_dodge()) return true;
+    }
+    return false;
+  }
   void fadeout(float len) {
     queue_.clear();
     fadeout_ = true;
