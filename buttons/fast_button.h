@@ -1,11 +1,18 @@
 #ifndef BUTTONS_FAST_BUTTON_H
 #define BUTTONS_FAST_BUTTON_H
 
+// Like a button, but can respond to very short events.
+// No de-bouncing, only generates EVENT_CLICK_SHORT
 template<int PIN>
-class FastButtonBase : public Looper {
+class FastButton : public Looper {
 public:
-  USE_PIN_INPUT(PIN, FastButtonBase<PIN>);
-  FastButtonBase(const char* name, enum BUTTON button) : name_(name), button_(button) {}
+  USE_PIN_INPUT(PIN, FastButton<PIN>);
+
+  FastButton(const char* name, enum BUTTON button) : name_(name), button_(button) {
+    pinMode(PIN, INPUT_PULLUP);
+    attachInterrupt(PIN, &FastButton::irq, FALLING);
+  }
+
   const char* name() override { return name_; }
 
   void Loop() override {
@@ -14,37 +21,15 @@ public:
       prop.Event(button_, EVENT_CLICK_SHORT);
     }
   }
-  
-protected:
-  static volatile bool pressed;
+
+private:
   static void irq() { pressed = true; }
   
+  static volatile bool pressed;
   const char* name_;
   enum BUTTON button_;
 };
 
-template<int PIN> volatile bool FastButtonBase<PIN>::pressed = false;
-
-
-// Like a button, but can respond to very short events.
-// No de-bouncing, only generates EVENT_CLICK_SHORT
-template<int PIN>
-class FastButton : public FastButtonBase<PIN> {
-public:
-  FastButton(const char* name, enum BUTTON button) : FastButtonBase<PIN>(name, button) {
-    pinMode(PIN, INPUT_PULLUP);
-    attachInterrupt(PIN, &FastButtonBase<PIN>::irq, FALLING);
-  }
-};
-
-// Like a FastButton, but reacts on rising edge.
-template<int PIN>
-class FastPullDownButton : public FastButtonBase<PIN> {
-public:
-  FastPullDownButton(const char* name, enum BUTTON button) : FastButtonBase<PIN>(name, button) {
-    pinMode(PIN, INPUT_PULLDOWN);
-    attachInterrupt(PIN, &FastButtonBase<PIN>::irq, RISING);
-  }
-};
+template<int PIN> volatile bool FastButton<PIN>::pressed = false;
 
 #endif
