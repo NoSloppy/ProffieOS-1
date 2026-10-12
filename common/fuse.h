@@ -200,9 +200,9 @@ public:
       // Rotation takes exactly one second.
       float fraction = (millis() - barrel_roll_start_) / 1000.0;
       if (fraction > 1.0) {
-	barrel_roll_direction_ = 0;
+        barrel_roll_direction_ = 0;
       } else {
-	down_ = down_.RotateX(M_PI * 2 * fraction * barrel_roll_direction_);
+        down_ = down_.RotateX(M_PI * 2 * fraction * barrel_roll_direction_);
       }
     }
 #endif

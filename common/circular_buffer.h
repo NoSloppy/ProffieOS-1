@@ -7,7 +7,7 @@ template<class T, size_t SIZE>
 class CircularBuffer {
 public:
   static_assert((SIZE & (SIZE -1)) == 0,
-		"Circular buffer size must be 2^N");
+  "Circular buffer size must be 2^N");
 
   CircularBuffer() : first_(0), last_(0) {}
 

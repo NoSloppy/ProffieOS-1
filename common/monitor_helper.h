@@ -65,6 +65,7 @@ protected:
       }
     }
 #endif
+
 #ifdef ENABLE_TRACING
     if (!strcmp(cmd, "dumptrace")) {
       for (size_t i = 0; i < NELEM(trace); i++) {

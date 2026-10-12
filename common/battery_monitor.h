@@ -7,12 +7,11 @@
 
 class BatteryMonitor : Looper, CommandParser, StateMachine {
 public:
-BatteryMonitor() : reader_(batteryLevelPin,
-			     INPUT
+BatteryMonitor() : reader_(batteryLevelPin, INPUT
 #if VERSION_MAJOR == 5 || VERSION_MAJOR == 6
-                             , 10e-6
+  , 10e-6
 #endif
-   ) {}
+  ) {}
   const char* name() override { return "BatteryMonitor"; }
   float battery() const {
     return last_voltage_;

@@ -132,10 +132,174 @@ public:
     while (true) {
       while (!SA::Connected()) YIELD();
       if (!SA::AlwaysConnected()) {
-        STDOUT << "Welcome to ProffieOS " << version << "\n";
-        STDOUT << "For available serial commands, see:\n";
-        STDOUT << "https://pod.hubbe.net/tools/serial-monitor-commands.html\n";	
-      }
+        PVLOG_NORMAL << "********* Hi Brian! Welcome to ProffieOS " << version << "**********\n";
+        PVLOG_NORMAL << "For available serial commands, see:\n";
+        PVLOG_NORMAL << "https://pod.hubbe.net/tools/serial-monitor-commands.html\n";
+        PVLOG_NORMAL << 
+        "\n Installed: " << install_time <<
+        "\n Config: " CONFIG_FILE
+        "\n Prop: " TOSTRING(PROP_TYPE) 
+        "\n Current Preset: " << current_directory <<
+        "\n"
+        "\n NUM_BUTTONS: " TOSTRING(NUM_BUTTONS)
+        "\n NUM_BLADES: " TOSTRING(NUM_BLADES)
+        "\n"
+
+        "\n ------ Audio Stuff --------"
+        "\n BOOT Volume: " TOSTRING(BOOT_VOLUME)
+        "\n MAX Volume: " TOSTRING(VOLUME)
+        "\n FILTER_CUTOFF_FREQUENCY: " TOSTRING(FILTER_CUTOFF_FREQUENCY)
+        "\n FILTER_ORDER: " TOSTRING(FILTER_ORDER);
+#if defined(ENABLE_IDLE_SOUND)
+        PVLOG_NORMAL << " ENABLE_IDLE_SOUND Enabled: YES\n";
+#else
+        PVLOG_NORMAL << " ENABLE_IDLE_SOUND Enabled: NO\n";
+#endif
+#if defined(BC_BUTTON_CLICKER)
+        PVLOG_NORMAL << " BC_BUTTON_CLICKER Enabled: YES\n";
+#else
+        PVLOG_NORMAL << " BC_BUTTON_CLICKER Enabled: NO\n";
+#endif
+
+        PVLOG_NORMAL << "\n ------ Blade Stuff ------\n";
+        PVLOG_NORMAL << " EXTRA_COLOR_BUFFER_SPACE: " TOSTRING(EXTRA_COLOR_BUFFER_SPACE) "\n";
+#if defined(BLADE_DETECT_PIN)
+        PVLOG_NORMAL << " Blade Detection: Blade Detect\n";
+#elif defined(BLADE_ID_SCAN_MILLIS)
+        PVLOG_NORMAL << " Blade Detection: Blade ID\n";
+#else
+        PVLOG_NORMAL << " Blade Detection: None\n";
+#endif
+#if defined(DYNAMIC_BLADE_LENGTH)
+        PVLOG_NORMAL << " DYNAMIC_BLADE_LENGTH Enabled: YES\n";
+#else
+        PVLOG_NORMAL << " DYNAMIC_BLADE_LENGTH Enabled: NO\n";
+#endif
+#if defined(BC_DUAL_BLADES)
+        PVLOG_NORMAL << " BC_DUAL_BLADES Enabled: YES\n";
+#else
+        PVLOG_NORMAL << " BC_DUAL_BLADES Enabled: NO\n";
+#endif
+#if defined(SPEAK_BLADE_ID)
+        PVLOG_NORMAL << " SPEAK_BLADE_ID Enabled: YES\n";
+#endif
+
+        PVLOG_NORMAL << "\n ------ SD Card Stuff -------\n";
+#if defined(USB_CLASS_MSC)
+        PVLOG_NORMAL << " Mass Storage Enabled: YES\n";
+#else
+        PVLOG_NORMAL << " Mass Storage Enabled: NO\n";
+#endif
+#if defined(MOUNT_SD_SETTING)
+        PVLOG_NORMAL << " MOUNT_SD_SETTING Enabled: YES\n";
+#else
+        PVLOG_NORMAL << " MOUNT_SD_SETTING Enabled: NO\n";
+#endif
+#if defined(SAVE_STATE)
+        PVLOG_NORMAL << " SAVE_STATE Enabled: YES\n";
+#endif
+#if defined(SAVE_VOLUME)
+        PVLOG_NORMAL << " SAVE_VOLUME Enabled: YES\n";
+#endif
+#if defined(SAVE_PRESET)
+        PVLOG_NORMAL << " SAVE_PRESET Enabled: YES\n";
+#endif
+#if defined(SAVE_COLOR_CHANGE)
+        PVLOG_NORMAL << " SAVE_COLOR_CHANGE Enabled: YES\n";
+#endif
+
+        PVLOG_NORMAL << "\n ------- OLED stuff --------\n";
+#if defined(ENABLE_SSD1306)
+        PVLOG_NORMAL << " ENABLE_SSD1306 Enabled: YES\n";
+#endif
+#if defined(OLED_FLIP_180)
+        PVLOG_NORMAL << " OLED_FLIP_180 Enabled: YES\n";
+#endif
+#if defined(OLED_MIRRORED)
+        PVLOG_NORMAL << " OLED_MIRRORED Enabled: YES\n";
+#endif
+#if defined(USE_AUREBESH_FONT)
+        PVLOG_NORMAL << " USE_AUREBESH_FONT Enabled: YES\n";
+#endif
+#if defined(PLI_OFF_TIME)
+        PVLOG_NORMAL << " PLI_OFF_TIME: " TOSTRING(PLI_OFF_TIME) "\n";
+#endif
+#if defined(POV_INCLUDE_FILE)
+        PVLOG_NORMAL << " POV_INCLUDE_FILE Enabled: YES\n";
+#endif
+
+        PVLOG_NORMAL << "\n ------- System stuff --------\n";
+        PVLOG_NORMAL << 
+        " PROFFIEOS_LOG_LEVEL: " TOSTRING(PROFFIEOS_LOG_LEVEL) "\n";
+#if defined(ENABLE_DEVELOPER_COMMANDS)
+        PVLOG_NORMAL << " ENABLE_DEVELOPER_COMMANDS: YES\n";
+#else
+        PVLOG_NORMAL << " ENABLE_DEVELOPER_COMMANDS: NO\n";
+#endif
+#if defined(DISABLE_DIAGNOSTIC_COMMANDS)
+        PVLOG_NORMAL << " DISABLE_DIAGNOSTIC_COMMANDS: YES\n";
+#else
+        PVLOG_NORMAL << " DISABLE_DIAGNOSTIC_COMMANDS: NO\n";
+#endif
+        PVLOG_NORMAL << 
+        "\n IDLE_OFF_TIME: " TOSTRING(IDLE_OFF_TIME)
+        "\n MOTION_TIMEOUT: " TOSTRING(MOTION_TIMEOUT) "\n";
+        PVLOG_NORMAL << "\n------- Motion and Gesture stuff -------\n";
+        PVLOG_NORMAL << 
+        " CLASH_THRESHOLD_G: " TOSTRING(CLASH_THRESHOLD_G)
+#if defined(ENABLE_SPINS)
+        "\n ENABLE_SPINS Enabled: YES\n";
+#endif
+        ;
+#if defined(SMOOTH_COLORCHANGE_TICKS_PER_REVOLUTION)
+        PVLOG_NORMAL << " SMOOTH_COLORCHANGE_TICKS_PER_REVOLUTION: " TOSTRING(SMOOTH_COLORCHANGE_TICKS_PER_REVOLUTION) "\n";
+#endif
+#if defined(STEPS_PER_REVOLUTION)
+        PVLOG_NORMAL << " STEPS_PER_REVOLUTION: " TOSTRING(STEPS_PER_REVOLUTION) "\n";
+#endif
+
+        PVLOG_NORMAL << "\n------- BC prop stuff ------\n";
+#if defined(BC_SWING_ON)
+        PVLOG_NORMAL << " BC_SWING_ON Enabled: YES\n";
+#endif
+#if defined(BC_SWING_ON_SPEED)
+        PVLOG_NORMAL << " BC_SWING_ON_SPEED: " TOSTRING(BC_SWING_ON_SPEED) "\n";
+#endif
+#if defined(BC_THRUST_ON)
+        PVLOG_NORMAL << " BC_THRUST_ON Enabled: YES\n";
+#endif
+#if defined(BC_TWIST_ON)
+        PVLOG_NORMAL << " BC_TWIST_ON Enabled: YES\n";
+#endif
+#if defined(BC_TWIST_OFF)
+        PVLOG_NORMAL << " BC_TWIST_OFF Enabled: YES\n";
+#endif
+#if defined(BC_FORCE_PUSH)
+        PVLOG_NORMAL << " BC_FORCE_PUSH Enabled: YES\n";
+        PVLOG_NORMAL << " BC_FORCE_PUSH_LENGTH: " TOSTRING(BC_FORCE_PUSH_LENGTH) "\n";
+#endif
+#if defined(BC_ENABLE_AUTO_SWING_BLAST)
+        PVLOG_NORMAL << " BC_ENABLE_AUTO_SWING_BLAST Enabled: YES\n";
+#endif
+#if defined(BC_LOCKUP_DELAY)
+        PVLOG_NORMAL << " BC_LOCKUP_DELAY: " TOSTRING(BC_LOCKUP_DELAY) "\n";
+#endif
+#if defined(BC_CUSTOM_BEEPER)
+        PVLOG_NORMAL << " BC_CUSTOM_BEEPER Enabled: YES\n";
+#endif
+
+
+#if defined(MENU_SPEC_TEMPLATE)
+        PVLOG_NORMAL << " ProffieOS Menus Enabled: YES\n";
+#else
+        PVLOG_NORMAL << " ProffieOS Menus Enabled: NO\n";
+#endif
+
+        PVLOG_NORMAL << "\n------- Custom / Experimental / Alpha-Beta stuff ------\n";
+#if defined(ECHO_COMMANDS)
+        PVLOG_NORMAL << " ECHO_COMMANDS Enabled: YES\n\n";
+#endif
+     }
 
       while (SA::Connected()) {
         while (!SA::stream().available()) YIELD();
@@ -209,8 +373,9 @@ public:
     } else {
       e = nullptr;
     }
-    if (monitor.IsMonitoring(Monitoring::MonitorSerial) &&
-        default_output != &SA::stream()) {
+    // if (monitor.IsMonitoring(Monitoring::MonitorSerial) &&
+    //     default_output != &SA::stream()) {  // commented out by BC to always see in regular serial monitor. Why not always??
+    if (monitor.IsMonitoring(Monitoring::MonitorSerial)) {
       default_output->print("Received command: ");
       default_output->print(cmd);
       if (e) {
@@ -225,8 +390,9 @@ public:
       default_output->println("");
     }
     if (!CommandParser::DoParse(cmd, e)) {
-      STDOUT.print("Whut? :");
-      STDOUT.println(cmd);
+      PVLOG_NORMAL << "DaFuk does \"" << cmd << "\" mean??\n";
+      PVLOG_NORMAL << "Chris, that's a TERRible word ... " << cmd << ".\n";
+      PVLOG_NORMAL << "Heheehee. He said you Gramma's titty look like a " << cmd << ".\n";
     }
     STDOUT.print(SA::response_footer());
     stdout_output = default_output;

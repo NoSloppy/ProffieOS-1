@@ -92,6 +92,9 @@ public:
     pos_ = fract(pos_ + speed * delta_micros * 0.000001 / 60.0);
 
     float v;
+    // if (!charging) { 
+    //   v = 32767; // Solid on when charging is complete
+    // } else if (usb_on) {
     if (usb_on) {
       v = pos_;
     } else {
@@ -119,7 +122,7 @@ public:
       return true;
     }
     return false;
-  }
+  }  
 
 private:
   uint32_t blink_start_;

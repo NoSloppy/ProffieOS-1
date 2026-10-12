@@ -28,6 +28,10 @@ extern SaberBase* saberbases;
     DEFINE_EFFECT(LOCKUP_END)                   \
     DEFINE_EFFECT(DRAG_BEGIN)                   \
     DEFINE_EFFECT(DRAG_END)                     \
+    DEFINE_EFFECT(MELT_BEGIN)                   \
+    DEFINE_EFFECT(MELT_END)                     \
+    DEFINE_EFFECT(LB_BEGIN)                     \
+    DEFINE_EFFECT(LB_END)                       \
     DEFINE_EFFECT(PREON)                        \
     DEFINE_EFFECT(POSTOFF)                      \
     DEFINE_EFFECT(IGNITION)                     \
@@ -106,6 +110,15 @@ extern SaberBase* saberbases;
     DEFINE_EFFECT(USER6)                        \
     DEFINE_EFFECT(USER7)                        \
     DEFINE_EFFECT(USER8)                        \
+    /* user step 2 effects - allows WavLen with SOUNDQ */                                                          \
+    DEFINE_EFFECT(USER1_STEP2)                  \
+    DEFINE_EFFECT(USER2_STEP2)                  \
+    DEFINE_EFFECT(USER3_STEP2)                  \
+    DEFINE_EFFECT(USER4_STEP2)                  \
+    DEFINE_EFFECT(USER5_STEP2)                  \
+    DEFINE_EFFECT(USER6_STEP2)                  \
+    DEFINE_EFFECT(USER7_STEP2)                  \
+    DEFINE_EFFECT(USER8_STEP2)                  \
     /* ERRORS */                                \
     DEFINE_EFFECT(SD_CARD_NOT_FOUND)            \
     DEFINE_EFFECT(FONT_DIRECTORY_NOT_FOUND)     \
@@ -400,6 +413,7 @@ public:
 
   static float sound_length;
   static int sound_number;
+  static bool skip_effect_blast_;
 
   static void ClearSoundInfo() {
     sound_length = 0.0;
@@ -457,6 +471,12 @@ public:
 
   static void DoOff(OffType off_type, EffectLocation location) {
     ClearSoundInfo();
+
+  if (skip_effect_blast_) {
+    skip_effect_blast_ = false;
+    return;
+  }
+
     DoOffInternal(off_type, location);
     switch (off_type) {
       case OFF_BLAST:
@@ -639,8 +659,15 @@ private:
 
       case EFFECT_LOCKUP_BEGIN:
         switch (SaberBase::Lockup()) {
+          case LOCKUP_LIGHTNING_BLOCK:
+            type = EFFECT_LB_BEGIN;
+            break;
+          case LOCKUP_MELT:
+            type = EFFECT_MELT_BEGIN;
+            break;
           case LOCKUP_DRAG:
             type = EFFECT_DRAG_BEGIN;
+            break;
           case LOCKUP_NORMAL:
             break;
           default: return;
@@ -648,8 +675,15 @@ private:
         break;
       case EFFECT_LOCKUP_END:
         switch (SaberBase::Lockup()) {
+          case LOCKUP_LIGHTNING_BLOCK:
+            type = EFFECT_LB_END;
+            break;
+          case LOCKUP_MELT:
+            type = EFFECT_MELT_END;
+            break;
           case LOCKUP_DRAG:
             type = EFFECT_DRAG_END;
+            break;
           case LOCKUP_NORMAL:
             break;
           default: return;
@@ -679,6 +713,7 @@ private:
 };
 
 size_t SaberBase::num_effects_ = 0;
+bool SaberBase::skip_effect_blast_ = false;
 BladeEffect SaberBase::effects_[10];
 EffectLocation SaberBase::location;
 BladeSet SaberBase::on_ = BladeSet();
