@@ -2,8 +2,6 @@
 #ifndef COMMON_ERROR_H_DECLARED
 #define COMMON_ERROR_H_DECLARED
 
-#include "delay_timer.h"
-
 // Keep around for use for other things
 #ifdef ENABLE_AUDIO
 void DodgeSound(uint32_t millis);
@@ -26,20 +24,108 @@ public:
 
 #ifdef PROFFIEOS_DEFINE_FUNCTION_STAGE
 
+#ifdef ENABLE_AUDIO
+namespace {
+#ifndef DISABLE_TALKIE
+void SaySdCardNotFound() {
+  talkie.Say(talkie_sd_card_15, 15);
+  talkie.Say(talkie_not_found_15, 15);
+}
+void SayFontDirectoryNotFound() {
+  talkie.Say(talkie_font_directory_15, 15);
+  talkie.Say(talkie_not_found_15, 15);
+}
+void SayVoicePackNotFound() {
+  talkie.Say(talkie_voice_pack_15, 25);
+  talkie.Say(talkie_not_found_15, 15);
+}
+void SayErrorInBladeArray() {
+  talkie.Say(talkie_error_in_15, 15);
+  talkie.Say(talkie_blade_array_15, 15);
+}
+void SayErrorInFontDirectory() {
+  talkie.Say(talkie_error_in_15, 15);
+  talkie.Say(talkie_font_directory_15, 15);
+}
+void SayErrorInVoicePackVersion() {
+  talkie.Say(talkie_error_in_15, 15);
+  talkie.Say(talkie_voice_pack_15, 15);
+  talkie.Say(talkie_version_15, 15);
+}
+void SayLowBattery() {
+  talkie.Say(talkie_low_battery_15, 15);
+}
+#else
+void BeepSdCardNotFound() {
+  beeper.Beep(0.5, 261.63 * 2); // C5 - S
+  beeper.Beep(0.5, 293.66 * 2); // D5 - D
+  beeper.Beep(0.5, 261.63 * 2); // C5 - card
+  beeper.Beep(0.5, 196.00 * 2); // G4 - not
+  beeper.Beep(1.0, 130.81 * 2); // C4 - found
+}
+void BeepFontDirectoryNotFound() {
+  beeper.Beep(0.5,   261.63 * 2); // C5 - Font
+  beeper.Beep(0.5/3, 246.94 * 2); // B4 - di
+  beeper.Beep(0.5/3, 220.00 * 2); // A4 - rec
+  beeper.Beep(0.5/3, 196.00 * 2); // G4 - tor
+  beeper.Beep(0.5,   174.61 * 2); // F4 - y
+  beeper.Beep(0.5,   146.83 * 2); // D4 - not
+  beeper.Beep(0.5,   130.81 * 2); // C4 - found
+}
+void BeepVoicePackNotFound() {
+  beeper.Beep(1.0, 220.00 * 2); // A4 - Voice
+  beeper.Beep(0.5, 130.81 * 2); // C4 - pack
+  beeper.Beep(0.5, 146.83 * 2); // D4 - not
+  beeper.Beep(1.0, 130.81 * 2); // C4 - found
+}
+void BeepErrorInBladeArray() {
+  beeper.Beep(0.25, 174.61 * 2); // F4 - Err
+  beeper.Beep(0.25, 196.00 * 2); // G4 - or
+  beeper.Beep(0.25, 174.61 * 2); // F4 - in
+  beeper.Beep(0.25, 164.81 * 2); // E4 - the
+  beeper.Beep(0.3,  146.83 * 2); // D4 - blade
+  beeper.Beep(0.2,  0);          // Silence
+  beeper.Beep(0.5,  146.83 * 2); // D4 - ar
+  beeper.Beep(1.0,  130.81 * 2); // C4 - ray
+}
+void BeepErrorInFontDirectory() {
+  beeper.Beep(0.25, 174.61 * 2); // F4 - Err
+  beeper.Beep(0.25, 196.00 * 2); // G4 - or
+  beeper.Beep(0.25, 174.61 * 2); // F4 - in
+  beeper.Beep(0.25, 164.81 * 2); // E4 - the
+  beeper.Beep(0.5,  146.83 * 2); // D4 - font
+  beeper.Beep(0.5,  164.81 * 2); // E4 - di
+  beeper.Beep(0.5,  196.00 * 2); // G4 - rec
+  beeper.Beep(0.5,  246.94 * 2); // B4 - tor
+  beeper.Beep(0.5,  261.63 * 2); // C5 - y
+}
+void BeepErrorInVoicePackVersion() {
+  beeper.Beep(0.25, 174.61 * 2); // F4 - Err
+  beeper.Beep(0.25, 196.00 * 2); // G4 - or
+  beeper.Beep(0.25, 174.61 * 2); // F4 - in
+  beeper.Beep(0.25, 164.81 * 2); // E4 - the
+  beeper.Beep(0.5,  220.00 * 2); // A4 - voice
+  beeper.Beep(0.5,  146.83 * 2); // D4 - pack
+  beeper.Beep(1.0,  196.00 * 2); // G4 - ver
+  beeper.Beep(0.5,  130.81 * 2); // C4 - sion
+}
+void BeepLowBattery() {
+  beeper.Beep(1.0, 261.63 * 2); // C4
+  beeper.Beep(1.0, 130.81 * 2); // C3
+}
+#endif
+}  // namespace
+#endif  // ENABLE_AUDIO
+
 void ProffieOSErrors::sd_card_not_found() {
   SaberBase::DoEffect(EFFECT_SD_CARD_NOT_FOUND, 0);
   PVLOG_ERROR << "** ERROR - SD card not found.\n"
                  "** See https://pod.hubbe.net/troubleshooting/what-is-it-saying.html#sd-card-not-found\n";
 #ifdef ENABLE_AUDIO
 #ifndef DISABLE_TALKIE
-  talkie.Say(talkie_sd_card_15, 15);
-  talkie.Say(talkie_not_found_15, 15);
+  SOUNDQ->Play(SaySdCardNotFound);
 #else
-  beeper.Beep(0.5, 261.63 * 2); // C5 - S
-  beeper.Beep(0.5, 293.66 * 2); // D5 - D
-  beeper.Beep(0.5, 261.63 * 2); // C5 - card
-  beeper.Beep(0.5, 196.00 * 2); // G4 - not
-  beeper.Beep(1.0, 130.81 * 2); // C4 - found
+  SOUNDQ->Play(BeepSdCardNotFound);
 #endif
 #endif
 }
@@ -51,18 +137,9 @@ void ProffieOSErrors::font_directory_not_found() {
 #ifdef ENABLE_AUDIO
   if (SaberBase::sound_length > 0) return;
 #ifndef DISABLE_TALKIE
-  talkie.Say(talkie_font_directory_15, 15);
-  talkie.Say(talkie_not_found_15, 15);
-  AppendToDelayTimer(2000);
+  SOUNDQ->Play(SayFontDirectoryNotFound);
 #else
-  beeper.Beep(0.5,   261.63 * 2); // C5 - Font
-  beeper.Beep(0.5/3, 246.94 * 2); // B4 - di
-  beeper.Beep(0.5/3, 220.00 * 2); // A4 - rec
-  beeper.Beep(0.5/3, 196.00 * 2); // G4 - tor
-  beeper.Beep(0.5,   174.61 * 2); // F4 - y
-  beeper.Beep(0.5,   146.83 * 2); // D4 - not
-  beeper.Beep(0.5,   130.81 * 2); // C4 - found
-  AppendToDelayTimer(2530);
+  SOUNDQ->Play(BeepFontDirectoryNotFound);
 #endif
 #endif
 }
@@ -74,15 +151,9 @@ void ProffieOSErrors::voice_pack_not_found() {
 #ifdef ENABLE_AUDIO
   if (SaberBase::sound_length > 0) return;
 #ifndef DISABLE_TALKIE
-  talkie.Say(talkie_voice_pack_15, 25);
-  talkie.Say(talkie_not_found_15, 15);
-  AppendToDelayTimer(2000);
+  SOUNDQ->Play(SayVoicePackNotFound);
 #else
-  beeper.Beep(1.0, 220.00 * 2); // A4 - Voice
-  beeper.Beep(0.5, 130.81 * 2); // C4 - pack
-  beeper.Beep(0.5, 146.83 * 2); // D4 - not
-  beeper.Beep(1.0, 130.81 * 2); // C4 - found
-  AppendToDelayTimer(3000);
+  SOUNDQ->Play(BeepVoicePackNotFound);
 #endif
 #endif
 }
@@ -94,19 +165,9 @@ void ProffieOSErrors::error_in_blade_array() {
 #ifdef ENABLE_AUDIO
   if (SaberBase::sound_length > 0) return;
 #ifndef DISABLE_TALKIE
-  talkie.Say(talkie_error_in_15, 15);
-  talkie.Say(talkie_blade_array_15, 15);
-  AppendToDelayTimer(2000);
+  SOUNDQ->Play(SayErrorInBladeArray);
 #else
-  beeper.Beep(0.25, 174.61 * 2); // F4 - Err
-  beeper.Beep(0.25, 196.00 * 2); // G4 - or
-  beeper.Beep(0.25, 174.61 * 2); // F4 - in
-  beeper.Beep(0.25, 164.81 * 2); // E4 - the
-  beeper.Beep(0.3,  146.83 * 2); // D4 - blade
-  beeper.Beep(0.2,  0);          // Silence
-  beeper.Beep(0.5,  146.83 * 2); // D4 - ar
-  beeper.Beep(1.0,  130.81 * 2); // C4 - ray
-  AppendToDelayTimer(3000);
+  SOUNDQ->Play(BeepErrorInBladeArray);
 #endif
 #endif
 }
@@ -118,20 +179,9 @@ void ProffieOSErrors::error_in_font_directory() {
 #ifdef ENABLE_AUDIO
   if (SaberBase::sound_length > 0) return;
 #ifndef DISABLE_TALKIE
-  talkie.Say(talkie_error_in_15, 15);
-  talkie.Say(talkie_font_directory_15, 15);
-  AppendToDelayTimer(1300);
+  SOUNDQ->Play(SayErrorInFontDirectory);
 #else
-  beeper.Beep(0.25, 174.61 * 2); // F4 - Err
-  beeper.Beep(0.25, 196.00 * 2); // G4 - or
-  beeper.Beep(0.25, 174.61 * 2); // F4 - in
-  beeper.Beep(0.25, 164.81 * 2); // E4 - the
-  beeper.Beep(0.5,  146.83 * 2); // D4 - font
-  beeper.Beep(0.5,  164.81 * 2); // E4 - di
-  beeper.Beep(0.5,  196.00 * 2); // G4 - rec
-  beeper.Beep(0.5,  246.94 * 2); // B4 - tor
-  beeper.Beep(0.5,  261.63 * 2); // C5 - y
-  AppendToDelayTimer(3500);
+  SOUNDQ->Play(BeepErrorInFontDirectory);
 #endif
 #endif
 }
@@ -143,20 +193,9 @@ void ProffieOSErrors::error_in_voice_pack_version() {
 #ifdef ENABLE_AUDIO
   if (SaberBase::sound_length > 0) return;
 #ifndef DISABLE_TALKIE
-  talkie.Say(talkie_error_in_15, 15);
-  talkie.Say(talkie_voice_pack_15, 15);
-  talkie.Say(talkie_version_15, 15);
-  AppendToDelayTimer(1500);
+  SOUNDQ->Play(SayErrorInVoicePackVersion);
 #else
-  beeper.Beep(0.25, 174.61 * 2); // F4 - Err
-  beeper.Beep(0.25, 196.00 * 2); // G4 - or
-  beeper.Beep(0.25, 174.61 * 2); // F4 - in
-  beeper.Beep(0.25, 164.81 * 2); // E4 - the
-  beeper.Beep(0.5,  220.00 * 2); // A4 - voice
-  beeper.Beep(0.5,  146.83 * 2); // D4 - pack
-  beeper.Beep(1.0,  196.00 * 2); // G4 - ver
-  beeper.Beep(0.5,  130.81 * 2); // C4 - sion
-  AppendToDelayTimer(3500);
+  SOUNDQ->Play(BeepErrorInVoicePackVersion);
 #endif
 #endif
 }
@@ -170,10 +209,9 @@ void ProffieOSErrors::low_battery() {
   }
 
 #ifndef DISABLE_TALKIE
-  talkie.Say(talkie_low_battery_15, 15);
+  SOUNDQ->Play(SayLowBattery);
 #else
-  beeper.Beep(1.0, 261.63 * 2); // C4
-  beeper.Beep(1.0, 130.81 * 2); // C3
+  SOUNDQ->Play(BeepLowBattery);
 #endif
 #endif
 }

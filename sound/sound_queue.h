@@ -6,6 +6,9 @@
 class SoundToPlayBase {
 public:
   virtual bool Play(BufferedWavPlayer* player) = 0;
+  // Wav items need a BufferedWavPlayer; talkie/beeper items do not.
+  virtual bool needs_player() const { return true; }
+  virtual bool wants_dodge() const { return false; }
   virtual ~SoundToPlayBase() {}
 };
 
@@ -47,11 +50,58 @@ public:
                  << " not found at play time (SD remount/path change?)\n";
     return false;
   }
+  bool wants_dodge() const override { return true; }
 private:
   const char* filename_;
 };
 
 
+
+// Runs an arbitrary function when this queue item is dequeued.
+// Used to start talkie/beeper error phrases without a wav player.
+class SoundToPlayFn : public SoundToPlayBase {
+public:
+  explicit SoundToPlayFn(void (*fn)()) : fn_(fn) {}
+  bool Play(BufferedWavPlayer* player) override {
+    fn_();
+    return true;
+  }
+  bool needs_player() const override { return false; }
+  bool wants_dodge() const override { return true; }
+private:
+  void (*fn_)();
+};
+
+#ifndef DISABLE_TALKIE
+class SoundToPlayTalkie : public SoundToPlayBase {
+public:
+  SoundToPlayTalkie(const uint8_t* addr, uint32_t rate = 25)
+    : addr_(addr), rate_(rate) {}
+  bool Play(BufferedWavPlayer* player) override {
+    talkie.Say(addr_, rate_);
+    return true;
+  }
+  bool needs_player() const override { return false; }
+  bool wants_dodge() const override { return true; }
+private:
+  const uint8_t* addr_;
+  uint32_t rate_;
+};
+#endif
+
+class SoundToPlayBeep : public SoundToPlayBase {
+public:
+  SoundToPlayBeep(float length, float freq) : length_(length), freq_(freq) {}
+  bool Play(BufferedWavPlayer* player) override {
+    beeper.Beep(length_, freq_);
+    return true;
+  }
+  bool needs_player() const override { return false; }
+  bool wants_dodge() const override { return true; }
+private:
+  float length_;
+  float freq_;
+};
 
 class SoundToPlayFileID : public SoundToPlayBase {
 public:
@@ -229,6 +279,8 @@ public:
   template<class T>
   bool Play(T p) { return queue_.push_back(p); }
 
+  bool Play(void (*fn)()) { return Play(SoundToPlayFn(fn)); }
+
   // For backwards compatibility only.
   bool Play(SoundToPlay p) {
     if (p.filename_) {
@@ -247,9 +299,16 @@ public:
   // Called from Loop()
   void PollSoundQueue(RefPtr<BufferedWavPlayer>& player) {
     busy_ = player && player->isPlaying();
+    if (playing_non_wav_) {
+      playing_non_wav_ = beeper.isPlaying();
+#ifndef DISABLE_TALKIE
+      if (talkie.isPlaying()) playing_non_wav_ = true;
+#endif
+      if (playing_non_wav_) busy_ = true;
+    }
     if (fadeout_) {
       fadeout_ = false;
-      if (busy_) {
+      if (player && player->isPlaying()) {
         // We really should add the time since the fadeout was scheduled here.
         // However, if polling is frequent, it would be a fraction of a milli
         // which basically doesn't matter.
@@ -259,17 +318,32 @@ public:
     }
     if (!busy_) {
       if (queue_.size()) {
-        busy_ = true;
-        if (!player) {
-          player = GetFreeWavPlayer();
-          if (!player) return;
+        SoundToPlayBase* item = queue_[0];
+        bool dodge = item->wants_dodge();
+        if (item->needs_player()) {
+          if (!player) {
+            player = GetFreeWavPlayer();
+            // No player yet — retry next poll. Do not pop or dereference null.
+            if (!player) return;
+          }
+          player->set_volume_now(1.0f);
+          item->Play(player.get());
+        } else {
+          if (player) player.Free();
+          item->Play(nullptr);
+          playing_non_wav_ = true;
         }
-        player->set_volume_now(1.0f);
-        queue_[0]->Play(player.get());
-	queue_.pop_front();
+        queue_.pop_front();
+        busy_ = true;
+        dodge_while_busy_ = dodge;
       } else {
         if (player) player.Free();
+        dodge_while_busy_ = false;
       }
+    }
+    if (busy_ && dodge_while_busy_) {
+      DodgeSound(250);
+      if (player) player->set_dodge(false);
     }
   }
   bool busy() const { return busy_; }
@@ -285,6 +359,8 @@ private:
   bool busy_ = false;
   bool fadeout_;
   bool fadeout_len_;
+  bool playing_non_wav_ = false;
+  bool dodge_while_busy_ = false;
   VirtVec<SoundToPlayBase, QueueLength, QueueLength * 8> queue_;
 };
 

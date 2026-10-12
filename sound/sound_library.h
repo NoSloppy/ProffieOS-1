@@ -4,7 +4,6 @@
 #ifdef ENABLE_AUDIO
 
 #include "sound_queue.h"
-#include "../common/delay_timer.h"
 
 // Sound library
 EFFECT(mnum); // menu numbers
@@ -59,18 +58,6 @@ public:
   const char* name() { return "SoundQueue"; }
   void Loop() override {
     PollSoundQueue(wav_player_);
-    // Keep delay_until_ms just past current WAV end so boot/font waits for queue drain.
-    if (busy() && wav_player_) {
-      float pos = wav_player_->pos();
-      float len = wav_player_->length();
-      // pos() is negative while output buffer drains after decode; then remaining is -pos.
-      float remaining = (pos < 0.0f) ? -pos : (len - pos);
-      if (remaining < 0.0f) remaining = 0.0f;
-      uint32_t needed_until = millis() + (uint32_t)(remaining * 1000) + 500;
-      if (needed_until > delay_until_ms()) {
-        delay_until_ms() = needed_until;
-      }
-    }
   }
 
   void require_version(int version) {
@@ -139,8 +126,6 @@ inline bool PlayErrorMessage(const char* filename) {
   if (!SOUNDQ->Play(SoundToPlayErrorFile(filename))) return false;
   // Sound_length is still 0. Set a non-zero value now so errors.h suppresses Talkie immediately.
   if (SaberBase::sound_length < 0.001f) SaberBase::sound_length = 0.001f;
-  // Short initial hold until Loop() updates delay from actual remaining playback.
-  AppendToDelayTimer(500);
   return true;
 }
 
