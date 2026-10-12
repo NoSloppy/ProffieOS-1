@@ -27,92 +27,21 @@ public:
 #ifdef ENABLE_AUDIO
 namespace {
 #ifndef DISABLE_TALKIE
-void SaySdCardNotFound() {
-  talkie.Say(talkie_sd_card_15, 15);
-  talkie.Say(talkie_not_found_15, 15);
-}
-void SayFontDirectoryNotFound() {
-  talkie.Say(talkie_font_directory_15, 15);
-  talkie.Say(talkie_not_found_15, 15);
-}
-void SayVoicePackNotFound() {
-  talkie.Say(talkie_voice_pack_15, 25);
-  talkie.Say(talkie_not_found_15, 15);
-}
-void SayErrorInBladeArray() {
-  talkie.Say(talkie_error_in_15, 15);
-  talkie.Say(talkie_blade_array_15, 15);
-}
-void SayErrorInFontDirectory() {
-  talkie.Say(talkie_error_in_15, 15);
-  talkie.Say(talkie_font_directory_15, 15);
-}
-void SayErrorInVoicePackVersion() {
-  talkie.Say(talkie_error_in_15, 15);
-  talkie.Say(talkie_voice_pack_15, 15);
-  talkie.Say(talkie_version_15, 15);
-}
-void SayLowBattery() {
-  talkie.Say(talkie_low_battery_15, 15);
-}
+void SaySdCardNotFound();
+void SayFontDirectoryNotFound();
+void SayVoicePackNotFound();
+void SayErrorInBladeArray();
+void SayErrorInFontDirectory();
+void SayErrorInVoicePackVersion();
+void SayLowBattery();
 #else
-void BeepSdCardNotFound() {
-  beeper.Beep(0.5, 261.63 * 2); // C5 - S
-  beeper.Beep(0.5, 293.66 * 2); // D5 - D
-  beeper.Beep(0.5, 261.63 * 2); // C5 - card
-  beeper.Beep(0.5, 196.00 * 2); // G4 - not
-  beeper.Beep(1.0, 130.81 * 2); // C4 - found
-}
-void BeepFontDirectoryNotFound() {
-  beeper.Beep(0.5,   261.63 * 2); // C5 - Font
-  beeper.Beep(0.5/3, 246.94 * 2); // B4 - di
-  beeper.Beep(0.5/3, 220.00 * 2); // A4 - rec
-  beeper.Beep(0.5/3, 196.00 * 2); // G4 - tor
-  beeper.Beep(0.5,   174.61 * 2); // F4 - y
-  beeper.Beep(0.5,   146.83 * 2); // D4 - not
-  beeper.Beep(0.5,   130.81 * 2); // C4 - found
-}
-void BeepVoicePackNotFound() {
-  beeper.Beep(1.0, 220.00 * 2); // A4 - Voice
-  beeper.Beep(0.5, 130.81 * 2); // C4 - pack
-  beeper.Beep(0.5, 146.83 * 2); // D4 - not
-  beeper.Beep(1.0, 130.81 * 2); // C4 - found
-}
-void BeepErrorInBladeArray() {
-  beeper.Beep(0.25, 174.61 * 2); // F4 - Err
-  beeper.Beep(0.25, 196.00 * 2); // G4 - or
-  beeper.Beep(0.25, 174.61 * 2); // F4 - in
-  beeper.Beep(0.25, 164.81 * 2); // E4 - the
-  beeper.Beep(0.3,  146.83 * 2); // D4 - blade
-  beeper.Beep(0.2,  0);          // Silence
-  beeper.Beep(0.5,  146.83 * 2); // D4 - ar
-  beeper.Beep(1.0,  130.81 * 2); // C4 - ray
-}
-void BeepErrorInFontDirectory() {
-  beeper.Beep(0.25, 174.61 * 2); // F4 - Err
-  beeper.Beep(0.25, 196.00 * 2); // G4 - or
-  beeper.Beep(0.25, 174.61 * 2); // F4 - in
-  beeper.Beep(0.25, 164.81 * 2); // E4 - the
-  beeper.Beep(0.5,  146.83 * 2); // D4 - font
-  beeper.Beep(0.5,  164.81 * 2); // E4 - di
-  beeper.Beep(0.5,  196.00 * 2); // G4 - rec
-  beeper.Beep(0.5,  246.94 * 2); // B4 - tor
-  beeper.Beep(0.5,  261.63 * 2); // C5 - y
-}
-void BeepErrorInVoicePackVersion() {
-  beeper.Beep(0.25, 174.61 * 2); // F4 - Err
-  beeper.Beep(0.25, 196.00 * 2); // G4 - or
-  beeper.Beep(0.25, 174.61 * 2); // F4 - in
-  beeper.Beep(0.25, 164.81 * 2); // E4 - the
-  beeper.Beep(0.5,  220.00 * 2); // A4 - voice
-  beeper.Beep(0.5,  146.83 * 2); // D4 - pack
-  beeper.Beep(1.0,  196.00 * 2); // G4 - ver
-  beeper.Beep(0.5,  130.81 * 2); // C4 - sion
-}
-void BeepLowBattery() {
-  beeper.Beep(1.0, 261.63 * 2); // C4
-  beeper.Beep(1.0, 130.81 * 2); // C3
-}
+void BeepSdCardNotFound();
+void BeepFontDirectoryNotFound();
+void BeepVoicePackNotFound();
+void BeepErrorInBladeArray();
+void BeepErrorInFontDirectory();
+void BeepErrorInVoicePackVersion();
+void BeepLowBattery();
 #endif
 }  // namespace
 #endif  // ENABLE_AUDIO
@@ -202,7 +131,7 @@ void ProffieOSErrors::error_in_voice_pack_version() {
 
 void ProffieOSErrors::low_battery() {
 #ifdef ENABLE_AUDIO
-  // play the font's low battery sound if it exists
+  // play the fonts low battery sound if it exists
   if (SFX_lowbatt) {
     hybrid_font.PlayCommon(&SFX_lowbatt);
     return;
@@ -216,5 +145,97 @@ void ProffieOSErrors::low_battery() {
 #endif
 }
 
+#ifdef ENABLE_AUDIO
+namespace {
+#ifndef DISABLE_TALKIE
+void SaySdCardNotFound() {
+  talkie.Say(talkie_sd_card_15, 15);
+  talkie.Say(talkie_not_found_15, 15);
+}
+void SayFontDirectoryNotFound() {
+  talkie.Say(talkie_font_directory_15, 15);
+  talkie.Say(talkie_not_found_15, 15);
+}
+void SayVoicePackNotFound() {
+  talkie.Say(talkie_voice_pack_15, 25);
+  talkie.Say(talkie_not_found_15, 15);
+}
+void SayErrorInBladeArray() {
+  talkie.Say(talkie_error_in_15, 15);
+  talkie.Say(talkie_blade_array_15, 15);
+}
+void SayErrorInFontDirectory() {
+  talkie.Say(talkie_error_in_15, 15);
+  talkie.Say(talkie_font_directory_15, 15);
+}
+void SayErrorInVoicePackVersion() {
+  talkie.Say(talkie_error_in_15, 15);
+  talkie.Say(talkie_voice_pack_15, 15);
+  talkie.Say(talkie_version_15, 15);
+}
+void SayLowBattery() {
+  talkie.Say(talkie_low_battery_15, 15);
+}
+#else
+void BeepSdCardNotFound() {
+  beeper.Beep(0.5, 261.63 * 2); // C5 - S
+  beeper.Beep(0.5, 293.66 * 2); // D5 - D
+  beeper.Beep(0.5, 261.63 * 2); // C5 - card
+  beeper.Beep(0.5, 196.00 * 2); // G4 - not
+  beeper.Beep(1.0, 130.81 * 2); // C4 - found
+}
+void BeepFontDirectoryNotFound() {
+  beeper.Beep(0.5,   261.63 * 2); // C5 - Font
+  beeper.Beep(0.5/3, 246.94 * 2); // B4 - di
+  beeper.Beep(0.5/3, 220.00 * 2); // A4 - rec
+  beeper.Beep(0.5/3, 196.00 * 2); // G4 - tor
+  beeper.Beep(0.5,   174.61 * 2); // F4 - y
+  beeper.Beep(0.5,   146.83 * 2); // D4 - not
+  beeper.Beep(0.5,   130.81 * 2); // C4 - found
+}
+void BeepVoicePackNotFound() {
+  beeper.Beep(1.0, 220.00 * 2); // A4 - Voice
+  beeper.Beep(0.5, 130.81 * 2); // C4 - pack
+  beeper.Beep(0.5, 146.83 * 2); // D4 - not
+  beeper.Beep(1.0, 130.81 * 2); // C4 - found
+}
+void BeepErrorInBladeArray() {
+  beeper.Beep(0.25, 174.61 * 2); // F4 - Err
+  beeper.Beep(0.25, 196.00 * 2); // G4 - or
+  beeper.Beep(0.25, 174.61 * 2); // F4 - in
+  beeper.Beep(0.25, 164.81 * 2); // E4 - the
+  beeper.Beep(0.3,  146.83 * 2); // D4 - blade
+  beeper.Beep(0.2,  0);          // Silence
+  beeper.Beep(0.5,  146.83 * 2); // D4 - ar
+  beeper.Beep(1.0,  130.81 * 2); // C4 - ray
+}
+void BeepErrorInFontDirectory() {
+  beeper.Beep(0.25, 174.61 * 2); // F4 - Err
+  beeper.Beep(0.25, 196.00 * 2); // G4 - or
+  beeper.Beep(0.25, 174.61 * 2); // F4 - in
+  beeper.Beep(0.25, 164.81 * 2); // E4 - the
+  beeper.Beep(0.5,  146.83 * 2); // D4 - font
+  beeper.Beep(0.5,  164.81 * 2); // E4 - di
+  beeper.Beep(0.5,  196.00 * 2); // G4 - rec
+  beeper.Beep(0.5,  246.94 * 2); // B4 - tor
+  beeper.Beep(0.5,  261.63 * 2); // C5 - y
+}
+void BeepErrorInVoicePackVersion() {
+  beeper.Beep(0.25, 174.61 * 2); // F4 - Err
+  beeper.Beep(0.25, 196.00 * 2); // G4 - or
+  beeper.Beep(0.25, 174.61 * 2); // F4 - in
+  beeper.Beep(0.25, 164.81 * 2); // E4 - the
+  beeper.Beep(0.5,  220.00 * 2); // A4 - voice
+  beeper.Beep(0.5,  146.83 * 2); // D4 - pack
+  beeper.Beep(1.0,  196.00 * 2); // G4 - ver
+  beeper.Beep(0.5,  130.81 * 2); // C4 - sion
+}
+void BeepLowBattery() {
+  beeper.Beep(1.0, 261.63 * 2); // C4
+  beeper.Beep(1.0, 130.81 * 2); // C3
+}
+#endif
+}  // namespace
+#endif  // ENABLE_AUDIO
 
 #endif // PROFFIEOS_DEFINE_FUNCTION_STAGE
