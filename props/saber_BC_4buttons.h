@@ -996,14 +996,14 @@ public:
   }
 
   void DoUserEffect(int blade, bool aux, bool right) {
-    int effect;
+    EffectType effect;
     if (BladeIsOn(blade))
       effect = aux ? (right ? EFFECT_USER3 : EFFECT_USER4) :
                      (right ? EFFECT_USER1 : EFFECT_USER2);
     else
       effect = aux ? (right ? EFFECT_USER7 : EFFECT_USER8) :
                      (right ? EFFECT_USER5 : EFFECT_USER6);
-    SaberBase::DoEffect((EffectType)effect, EffectLocation(0, BladeSetFor(blade)));
+    SaberBase::DoEffect(effect, EffectLocation(0, BladeSetFor(blade)));
   }
 
   EffectLocation GetThrustBladeLocation() {
@@ -1509,7 +1509,6 @@ private:
   uint32_t last_blast_millis_ = millis();
   uint32_t saber_off_time_ = millis();
   uint32_t saber_on_time_ = millis();
-  Vec3 accel_;
   BladeSet thrusting_blade_ = BC_MAIN_BLADE_SET;
 };
 
