@@ -1513,6 +1513,9 @@ private:
   BladeSet thrusting_blade_ = BC_MAIN_BLADE_SET;
 };
 
+constexpr BladeSet SaberBC4Buttons::BC_MAIN_BLADE_SET;
+constexpr BladeSet SaberBC4Buttons::BC_SECOND_BLADE_SET;
+
 const BladeSet SaberBC4Buttons::controlled_blades_ =
     SaberBC4Buttons::BC_MAIN_BLADE_SET | SaberBC4Buttons::BC_SECOND_BLADE_SET;
 
