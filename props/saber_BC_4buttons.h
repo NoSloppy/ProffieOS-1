@@ -1044,7 +1044,8 @@ public:
         pending_clash_is_stab1_ = stab;
         pending_clash_strength1_ = value;
       } else {
-        pending_clash_strength1_ = std::max<float>(value, pending_clash_strength1_);
+        pending_clash_strength1_ =
+            std::max<float>(value, static_cast<float>(pending_clash_strength1_));
       }
     }
     accel_ = accel;
