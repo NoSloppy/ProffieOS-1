@@ -299,6 +299,18 @@ static_assert((BC4_POW2_BUTTON & (BC4_POW2_BUTTON - 1)) == 0 &&
 static_assert(BC_MAIN_BLADE != BC_SECOND_BLADE,
               "BC_MAIN_BLADE and BC_SECOND_BLADE must be different");
 
+EFFECT(dim);        // for EFFECT_POWERSAVE
+EFFECT(battery);    // for EFFECT_BATTERY_LEVEL
+EFFECT(bmbegin);    // for Begin Battle Mode
+EFFECT(bmend);      // for End Battle Mode
+EFFECT(push);       // for Force Push gesture
+EFFECT(tr);         // for EFFECT_TRANSITION_SOUND, use with User Effects.
+EFFECT(mute);       // Notification before muted ignition to avoid confusion.
+EFFECT(array);      // for Manual Blade Array switching
+#ifdef BC_BUTTON_CLICKER
+EFFECT(press);      // for button press clicks when OFF only.
+#endif
+
 template<class SPEC>
 struct BC4ScrollPresetsMode : public SPEC::SteppedMode {
   void next() override { beeper.Beep(0.05, 4000); prop_next_preset(); }
