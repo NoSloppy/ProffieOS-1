@@ -1,219 +1,313 @@
 /*
 saber_BC_4buttons.h
+  http://fredrik.hubbe.net/lightsaber/proffieos.html
   Copyright (c) 2016-2019 Fredrik Hubinette
   Copyright (c) 2023-2025 Brian Conner with contributions by:
   Fredrik Hubinette, Fernando da Rosa, Matthew McGeary, and Scott Weber.
   Distributed under the terms of the GNU General Public License v3.
+  http://www.gnu.org/licenses/
 
-This prop is for a staff saber with two blades and four buttons.
-It lets one Proffieboard control both blades.
+Derived from saber_BC_buttons.h.
 
-This file is based on saber_BC_buttons.h.
+Includes 4-button controls for a dual-blade staff on one Proffieboard V3.9.
+This prop treats the saber as two independent 2-button control sets:
+  - POW1 / AUX1 control the MAIN blade
+  - POW2 / AUX2 control the SECOND blade
 
------------------------- BUTTON SETUP ------------------------
+Proffieboard V3.9 button mapping:
+  POW1 -> powerButtonPin -> BUTTON_POWER
+  AUX1 -> auxPin         -> BUTTON_AUX
+  POW2 -> blade5Pin      -> BC4_POW2_BUTTON
+  AUX2 -> aux2Pin        -> BC4_AUX2_BUTTON
 
-Use these buttons on a Proffieboard V3.9:
-
-  POW1  - powerButtonPin - controls the MAIN blade
-  AUX1  - auxPin         - controls the MAIN blade
-  POW2  - blade5Pin      - controls the SECOND blade
-  AUX2  - aux2Pin        - controls the SECOND blade
-
-The names BUTTON_POWER, BUTTON_AUX, BUTTON_AUX2 and BUTTON_SELECT are
-software button IDs. They are not pin names.
-
-This ProffieOS version has no BUTTON_FREE1 ID. The prop assigns the
-available BUTTON_AUX2 ID to POW2 and BUTTON_SELECT to AUX2.
-You do not need to add these defines to your config; the prop sets
-these defaults for you.
-
-Put these lines in the button section at the bottom of your config:
-
-  Button PowerButton(BUTTON_POWER, powerButtonPin, "pow");
-  Button AuxButton(BUTTON_AUX, auxPin, "aux");
-  Button Pow2Button(BC4_POW2_BUTTON, blade5Pin, "pow2");
-  Button Aux2Button(BC4_AUX2_BUTTON, aux2Pin, "aux2");
-
-The prop defines BC4_POW2_BUTTON and BC4_AUX2_BUTTON when it is included.
-If you want different button IDs, define those names in your config
-before the prop is included. Each button must use a different ID.
-BUTTON_SELECT is also used by some other ProffieOS features, so do not
-use those features together with this button mapping.
-
-In the top section of your config, set:
-
+Required config:
   #define NUM_BUTTONS 4
 
-Then, in the prop section of your config, include this file:
-
+  #ifdef CONFIG_PROP
   #include "../props/saber_BC_4buttons.h"
+  #endif
 
-Including this file selects the SaberBC4Buttons prop automatically.
-You do not need to add a separate PROP_TYPE line.
+  #ifdef CONFIG_BUTTONS
+  Button PowerButton(BUTTON_POWER, powerButtonPin, "pow");     // POW1 - main blade
+  Button AuxButton(BUTTON_AUX, auxPin, "aux");                 // AUX1 - main blade
+  Button Pow2Button(BUTTON_AUX2, blade5Pin, "pow2");           // POW2 - second blade
+  Button Aux2Button(BUTTON_SELECT, aux2Pin, "aux2");           // AUX2 - second blade
+  #endif
 
-The prop turns on dual-blade mode automatically. You do not need to add
-#define BC_DUAL_BLADES. Add #define DYNAMIC_BLADE_LENGTH only if you want
-to use the blade-length menu.
+  Wire the four buttons to the pads named above on the Proffieboard V3.9.
 
------------------------- OPTIONAL DEFINES ------------------------
+Features:
+- Independent 2-button behavior for both blades.
+- Per-blade ignition / retraction / muted ignition.
+- Per-blade blaster blocks, lockup, drag, lightning block, force, battle mode,
+  spam blast, and power-save dim.
+- Shared board-global audio, preset, menu, battery, quotes, color, and blade-array
+  features.
 
-#define BC_SWING_ON
-#define BC_TWIST_ON
-#define BC_TWIST_OFF
-#define BC_THRUST_ON
+Optional defines:
 
-- Enable the matching motion gesture.
-- Swing or twist ignition turns on both blades. Twist-off turns both off.
-- Thrust ignition selects a blade using the motion sensor.
+#define BC4_GLOBAL_FROM_BOTH_GROUPS  - Allow POW2/AUX2 to trigger board-global controls.
+#define BC_SWING_ON                  - Swing ignition.
+#define BC_TWIST_ON                  - Twist ignition.
+#define BC_TWIST_OFF                 - Twist-off.
+#define BC_THRUST_ON                 - Thrust ignition.
+#define NO_BLADE_NO_GEST_ONOFF       - Disable gesture ignition when no blade is inserted.
+#define BC_FORCE_PUSH                - Enable force push gesture.
+#define BC_FORCE_PUSH_LENGTH         - Push gesture timeout, default 5.
+#define BC_NO_BM                     - Disable battle mode.
+#define BC_GESTURE_AUTO_BATTLE_MODE  - Gesture ignition also enters battle mode.
+#define BC_ENABLE_AUTO_SWING_BLAST   - Swing after blast enters timed auto-blast mode.
+#define BC_LOCKUP_DELAY              - Delay before auto lockup / melt, default 200.
+#define BC_SWING_ON_SPEED            - Swing speed needed for swing ignition, default 250.
+#define MOTION_TIMEOUT               - Time to keep motion active after power-off.
+#define BC_BUTTON_CLICKER            - Optional button click sound when off.
+#define FEMALE_TALKIE_VOICE          - Female voicepack variation.
+#define MENU_SPEC_TEMPLATE           - Use OS menu system instead of BC menus.
+#define DYNAMIC_BLADE_LENGTH         - Enable blade-length editing menu.
 
-#define NO_BLADE_NO_GEST_ONOFF
-- With blade detect enabled, do not use gesture ignition or retraction
-  while no blade is installed.
+Gesture controls:
+- There are three gesture types: swing, thrust and twist.
+- Gesture ignition turns on both controlled blades.
+- Twist-off turns off both controlled blades.
+- Thrust ignition and stab use the shared IMU and the active blade group.
+- For button-driven actions, the blade is determined only by the button group
+  being used. There is no "pointing up means second blade" behavior.
+- Orientation still applies where expected: bypass preon/postoff when pointing up,
+  drag when pointing down, preset up/down/first, and similar controls.
 
-#define BC_FORCE_PUSH
-- Enable the push gesture for Force.
+Global controls are main-pair-only by default. They include:
+- preset change and scroll presets
+- volume menu and blade-length / OS menu
+- spoken and on-demand battery level
+- track start/stop
+- quote player and sequential/random toggle
+- color change and revert color
+- blade ID scan and next blade array
 
-#define BC_FORCE_PUSH_LENGTH
-- Set how long the push gesture must be held. Default is 5.
+If BC4_GLOBAL_FROM_BOTH_GROUPS is defined, those controls are also available
+from POW2/AUX2.
 
-#define BC_NO_BM
-- Disable Battle Mode.
+====================== MAIN BLADE (POW1 / AUX1) ======================
+| Sorted by ON or OFF state: (what it's like while using saber) |
+======================================================================
 
-#define BC_GESTURE_AUTO_BATTLE_MODE
-- Enter Battle Mode when a gesture turns the blades on.
-- Do not use together with BC_NO_BM.
+-------- When blade is OFF -------
+Turn Blade ON             - Short Click POW1, or use a Gesture Ignition.
+Turn ON without Preon     - Short Click POW1 (while pointing UP), or use a Gesture Ignition.
+Turn Blade ON Muted       - Hold POW1 then Twist, or Double Click POW1.
+Scroll Presets            - Hold POW1. Rotate hilt to cycle through presets.
+                            Right = Next, Left = Previous.
+                            Click POW1 to ignite with chosen preset, or click
+                            and hold POW1 again to exit.
+Next Preset               - Long Click then release POW1 (NOT pointing UP or DOWN).
+Prev Preset               - Long Click then release POW1 (while pointing DOWN).
+Jump to First Preset      - Long Click then release POW1 (while pointing UP).
+Play/Stop Track           - 4x Click POW1.
+BC Volume Menu:
+        Enter Menu        - Hold POW1 and Clash.
+        Volume UP         - Rotate Right.
+        Volume DOWN        - Rotate Left.
+        Quick MAX Vol     - Hold POW1 while in Volume Menu.
+        Quick MIN Vol     - Double Click and Hold POW1 while in Volume Menu.
+        Save and Exit     - Click POW1.
+        Cancel and Exit   - Double Click POW1.
+BC Blade Length Edit:
+        Enter Mode        - Double Click and Hold POW1.
+        Adjust            - Rotate Right or Left
+        Save and Exit     - Click POW1.
+        Cancel and Exit   - Double Click POW1.
+Spoken Battery Level
+        in percentage     - 3x Click and Hold POW1.
+        in volts          - 3x Click and Hold POW1 (while pointing DOWN).
+On-Demand Batt Level      - 3x Click and Hold POW1, release after a second.
+Quote Player              - 3x Click POW1.
+Toggle Sequential or
+       Random quotes      - 3x Click POW1 (while pointing DOWN).
+Trigger Blade ID Scan     - 4x Click POW1 and Hold, release after one second.
+Next Blade Array          - 4x Click POW1 and Hold.
+User Effect 5             - Hold POW1 then Rotate Left 60 degrees.
+User Effect 6             - Hold POW1 then Rotate Right 60 degrees.
+Turn OFF blade            - Hold POW1 until off -or- Twist if using BC_TWIST_OFF.
+Turn OFF bypass postoff   - Turn OFF (while pointing UP).
 
-#define BC_ENABLE_AUTO_SWING_BLAST
-- Swing after a blast to trigger another blast.
+-------- When blade is ON -------
+Play/Stop Track           - 4x Click POW1.
+Next Preset Fast          - Hold POW1 and Twist (NOT pointing UP or DOWN).
+Previous Preset Fast      - Hold POW1 and Twist (while pointing DOWN).
+First Preset Fast         - Hold POW1 and Twist (while pointing UP).
+Clash                     - No button, just hit the blade against something.
+Blaster Deflection        - Click or Double Click POW1.
+Spam Blaster Blocks       - 4x Click and Hold POW1 (while pointing DOWN).
+Toggle Battle Mode        - Double Click and Hold POW1, release after a second
+                            (while pointing UP).
+Force Effect              - Double Click and Hold POW1, release after a second
+                            (while NOT pointing UP).
+Lockup                    - Hold POW1 + Clash. Release button to end.
+Drag                      - Hold POW1 + Clash (while pointing DOWN). Release
+                            button to end.
+Lightning Block           - Hold POW1 + Click AUX1. Release button to end.
+Color Change Mode         - 3x Click and Hold POW1.
+Revert ColorChange        - 3x Click and Hold POW1, release after a second.
+Quote Player              - 3x Click POW1.
+Toggle Sequential or
+       Random quotes      - 3x Click POW1 (while pointing DOWN).
+Force Push                - Push hilt perpendicularly from a stop.
+PowerSave Dim Blade       - Hold AUX1 then Twist (while pointing UP).
+User Effect 1             - Hold POW1 then Rotate Left 60 degrees.
+User Effect 2             - Hold POW1 then Rotate Right 60 degrees.
+User Effect 3             - Hold AUX1 then Rotate Left 60 degrees.
+User Effect 4             - Hold AUX1 then Rotate Right 60 degrees.
+Turn OFF blade            - Hold POW1 until off -or- Twist if using BC_TWIST_OFF.
+Turn OFF bypass postoff   - Turn OFF (while pointing UP).
 
-BC_MAIN_BLADE and BC_SECOND_BLADE
-- Change which BladeConfig entries are the main and second blades.
-- Defaults are blade 1 and blade 2. For example, use
-  #define BC_MAIN_BLADE 2 if the main blade is the second BladeConfig entry.
+---------------------------------------
+      MAIN blade summary by clicks
+---------------------------------------
+--------- When blade is OFF ---------
+1 click POW1             - turn main blade ON
+                          turn main blade ON bypass preon (pointing up)
+1 click POW1 long        - next preset
+                          previous preset (pointing down)
+                          first preset (pointing up)
+1 click POW1 held        - scroll presets
+    then twist          - turn main blade ON muted
+    then clash          - enter BC volume menu
+    then rotate left    - user effect 5
+    then rotate right   - user effect 6
+2 clicks POW1            - turn main blade ON muted
+2 clicks held            - blade length edit, or OS system menu instead
+3 clicks POW1            - quote
+                          toggle sequential or random quotes (pointing down)
+3 clicks long           - on-demand battery level
+3 clicks held           - spoken battery level in percentage
+                          spoken battery level in volts (pointing down)
+4 clicks POW1            - play / stop track
+4 clicks long           - manually trigger blade ID scan
+4 clicks held           - manually switch to next blade array
 
-BC4_POW2_BUTTON and BC4_AUX2_BUTTON
-- Change the software button IDs used by the second button pair.
-- The defaults are BUTTON_AUX2 for POW2 and BUTTON_SELECT for AUX2.
-- Only change these if you know another button ID is available. Set the
-  new IDs before including this prop.
+--------- When blade is ON ---------
+1 click POW1             - blaster deflection
+1 click POW1 held       - turn main blade OFF
+    then twist          - first preset fast
+                          next preset fast
+                          previous preset fast (pointing down)
+    then clash          - lockup
+    then rotate left    - user effect 1
+    then rotate right   - user effect 2
+1 click AUX1             - blaster deflection
+1 click AUX1 held       - lockup
+    then rotate left    - user effect 3
+    then rotate right   - user effect 4
+2 clicks POW1            - blaster deflection
+2 clicks POW1 long       - force (not pointing up)
+                          - toggle battle mode (pointing up)
+2 clicks AUX1            - blaster deflection
+3 clicks POW1            - quote
+                          toggle sequential or random quotes (pointing down)
+3 clicks POW1 long       - revert colorchange to config
+3 clicks POW1 held       - color change mode
+4 clicks POW1 held       - toggle spam blasts (pointing down)
+hold POW1 + click AUX1   - lightning block
+hold AUX1 + twist        - dim (pointing up)
 
-#define DYNAMIC_BLADE_LENGTH
-- Enable the blade-length menu.
-- Set a maximum blade length in the BladeConfig section of your config.
+====================== SECOND BLADE (POW2 / AUX2) ======================
+| Sorted by ON or OFF state: (what it's like while using saber) |
+=======================================================================
 
-#define MENU_SPEC_TEMPLATE DefaultMenuSpec
-- Use the ProffieOS menu instead of the BC volume and blade-length menus.
+-------- When blade is OFF -------
+Turn Blade ON             - Short Click POW2.
+Turn ON without Preon     - Short Click POW2 (while pointing UP for the second blade).
+Turn Blade ON Muted       - Hold POW2 then Twist, or Double Click POW2.
+Scroll Presets            - Same as main pair only if BC4_GLOBAL_FROM_BOTH_GROUPS
+                            is defined; otherwise ignored.
+Next Preset               - Same as main pair only if BC4_GLOBAL_FROM_BOTH_GROUPS
+                            is defined; otherwise ignored.
+Prev Preset               - Same as main pair only if BC4_GLOBAL_FROM_BOTH_GROUPS
+                            is defined; otherwise ignored.
+Jump to First Preset      - Same as main pair only if BC4_GLOBAL_FROM_BOTH_GROUPS
+                            is defined; otherwise ignored.
+Play/Stop Track           - Same as main pair only if BC4_GLOBAL_FROM_BOTH_GROUPS
+                            is defined; otherwise ignored.
+BC Volume Menu            - Same as main pair only if BC4_GLOBAL_FROM_BOTH_GROUPS
+                            is defined; otherwise ignored.
+BC Blade Length Edit      - Same as main pair only if BC4_GLOBAL_FROM_BOTH_GROUPS
+                            is defined; otherwise ignored.
+Spoken Battery Level      - Same as main pair only if BC4_GLOBAL_FROM_BOTH_GROUPS
+                            is defined; otherwise ignored.
+On-Demand Batt Level      - Same as main pair only if BC4_GLOBAL_FROM_BOTH_GROUPS
+                            is defined; otherwise ignored.
+Quote Player              - Same as main pair only if BC4_GLOBAL_FROM_BOTH_GROUPS
+                            is defined; otherwise ignored.
+Trigger Blade ID Scan     - Same as main pair only if BC4_GLOBAL_FROM_BOTH_GROUPS
+                            is defined; otherwise ignored.
+Next Blade Array          - Same as main pair only if BC4_GLOBAL_FROM_BOTH_GROUPS
+                            is defined; otherwise ignored.
+User Effect 5             - Hold POW2 then Rotate Left 60 degrees.
+User Effect 6             - Hold POW2 then Rotate Right 60 degrees.
+Turn OFF blade            - Hold POW2 until off -or- Twist if using BC_TWIST_OFF.
+Turn OFF bypass postoff   - Turn OFF (while pointing UP for the second blade).
 
-#define BC4_GLOBAL_FROM_BOTH_GROUPS
-- Let POW2/AUX2 use the board-wide controls listed below.
-- By default, only POW1/AUX1 can use those controls.
+-------- When blade is ON -------
+Blaster Deflection        - Click or Double Click POW2.
+Spam Blaster Blocks       - 4x Click and Hold POW2 (while pointing DOWN for the second blade).
+Toggle Battle Mode        - Double Click and Hold POW2, release after a second
+                            (while pointing UP for the second blade).
+Force Effect              - Double Click and Hold POW2, release after a second
+                            (while NOT pointing UP).
+Lockup                    - Hold POW2 + Clash. Release button to end.
+Drag                      - Hold POW2 + Clash (while pointing DOWN for the second blade).
+Lightning Block           - Hold POW2 + Click AUX2. Release button to end.
+Color Change Mode         - 3x Click and Hold POW2.
+Revert ColorChange        - 3x Click and Hold POW2, release after a second.
+Quote Player              - 3x Click POW2.
+Toggle Sequential or
+       Random quotes      - 3x Click POW2 (while pointing DOWN).
+Force Push                - Push hilt perpendicularly from a stop.
+PowerSave Dim Blade       - Hold AUX2 then Twist (while pointing UP for the second blade).
+User Effect 1             - Hold POW2 then Rotate Left 60 degrees.
+User Effect 2             - Hold POW2 then Rotate Right 60 degrees.
+User Effect 3             - Hold AUX2 then Rotate Left 60 degrees.
+User Effect 4             - Hold AUX2 then Rotate Right 60 degrees.
+Turn OFF blade            - Hold POW2 until off -or- Twist if using BC_TWIST_OFF.
+Turn OFF bypass postoff   - Turn OFF (while pointing UP for the second blade).
 
-BC_LOCKUP_DELAY, BC_SWING_ON_SPEED, MOTION_TIMEOUT,
-BC_BUTTON_CLICKER and FEMALE_TALKIE_VOICE are also supported.
+---------------------------------------
+     SECOND blade summary by clicks
+---------------------------------------
+--------- When blade is OFF ---------
+1 click POW2             - turn second blade ON
+1 click POW2 long        - preset actions only if global controls are enabled
+1 click POW2 held        - scroll presets only if global controls are enabled
+2 clicks POW2            - turn second blade ON muted
+3 clicks POW2            - quote only if global controls are enabled
+4 clicks POW2 long       - none
+4 clicks POW2 held       - none
+hold POW2 then twist     - turn second blade ON muted
+hold POW2 then clash     - enter lockup / drag
+hold POW2 then click AUX2 - lightning block
 
------------------------- GESTURE NOTES ------------------------
-
-One board has one motion sensor. It cannot tell which blade you mean
-from movement alone.
-
-If you hold a button while making a gesture, the prop uses that
-button's blade group when the control applies to a blade.
-When no button is held, thrust selects a blade from the direction of
-the motion, and a clash uses the blade above the horizon.
-
-The two blades point in opposite directions. So, "pointing up" for the
-second blade means the main blade is pointing down.
-
------------------------- GLOBAL CONTROLS ------------------------
-
-The board has one preset, font, volume and audio system. These controls
-are assigned to POW1/AUX1 by default:
-
-  Preset change and scroll presets
-  Volume, blade-length and OS menus
-  Spoken and on-demand battery level
-  Track start/stop and quotes
-  Color change and color reset
-  Blade ID scan and next blade array
-
-Define BC4_GLOBAL_FROM_BOTH_GROUPS if you also want POW2/AUX2 to use them.
-
------------------------- MAIN BLADE CONTROLS ------------------------
-
-POW1 = powerButtonPin      AUX1 = auxPin
-
-When the main blade is OFF:
-
-  Click POW1                 Turn the main blade on.
-  Double-click POW1          Turn the main blade on muted.
-  Hold POW1 and twist        Turn the main blade on muted.
-  Click AUX1                 Change preset: up = first, down = previous,
-                             otherwise next.
-  Long-click POW1            Start or stop the track.
-  3 clicks POW1              Play a quote. Point down to toggle quote order.
-  Hold POW1 and click AUX1   Enter the volume menu.
-  Hold POW1 and clash        Enter the volume menu.
-  Hold AUX1, click POW1      Speak the battery level.
-  Hold AUX1, long-click POW1 Play the on-demand battery level effect.
-  Hold POW1                  Enter scroll presets.
-  Double-click and hold POW1 Enter the blade-length or OS menu.
-  4 clicks and hold POW1     Select the next blade array.
-  4 clicks, long-click POW1  Scan the blade ID.
-
-When the main blade is ON:
-
-  Click or double-click POW1 or AUX1  Blaster deflection.
-  Hold POW1                           Turn the main blade off.
-  Hold POW1 and twist                 Change preset quickly.
-  Hold POW1 and clash                 Lockup; drag when pointing down.
-  Hold POW1, click AUX1               Lightning block.
-  Double-click then hold POW1         Force; point up to toggle Battle Mode.
-  3 clicks POW1                       Play a quote; point down to change
-                                      sequential/random quote playback.
-  3 clicks then hold POW1             Enter color change mode.
-  3 clicks, long-click POW1           Reset the color.
-  4 clicks then hold POW1             Toggle spam blast when pointing down.
-  Hold AUX1 and twist                 Dim the blade when pointing up.
-  Hold a button and twist             Trigger that button's user effect.
-  Clash with no button held           Clash, or Battle Mode lockup.
-  Thrust                             Stab.
-  Stab an object                      Melt.
-  Push                               Force push (requires BC_FORCE_PUSH).
-
------------------------- SECOND BLADE CONTROLS ------------------------
-
-POW2 = blade5Pin           AUX2 = aux2Pin
-
-When the second blade is OFF:
-
-  Click POW2                 Turn the second blade on.
-  Double-click POW2          Turn the second blade on muted.
-  Hold POW2 and twist        Turn the second blade on muted.
-
-When the second blade is ON:
-
-  Click or double-click POW2 or AUX2  Blaster deflection.
-  Hold POW2                           Turn the second blade off.
-  Hold POW2 and clash                 Lockup; drag when that blade points down.
-  Hold POW2, click AUX2               Lightning block.
-  Double-click then hold POW2         Force; point that blade up to toggle
-                                      Battle Mode.
-  4 clicks then hold POW2             Toggle spam blast when that blade
-                                      points down.
-  Hold AUX2 and twist                 Dim the blade when it points up.
-  Hold a button and twist             Trigger the matching user effect.
-
-The second pair uses the same user effects as the main pair:
-
-  POW twist right/left      USER1/USER2 when that blade is on
-                            USER5/USER6 when that blade is off
-  AUX twist right/left      USER3/USER4 when that blade is on
-                            USER7/USER8 when that blade is off
-
-The second pair does not change presets, enter menus, read the battery,
-control the track or quotes, change colors, scan blade IDs, or change
-blade arrays unless BC4_GLOBAL_FROM_BOTH_GROUPS is defined.
+--------- When blade is ON ---------
+1 click POW2             - blaster deflection
+1 click POW2 held       - turn second blade OFF
+    then twist          - first preset fast / next preset fast / previous preset fast
+    then clash          - lockup
+    then rotate left    - user effect 1
+    then rotate right   - user effect 2
+1 click AUX2             - blaster deflection
+1 click AUX2 held       - lockup
+    then rotate left    - user effect 3
+    then rotate right   - user effect 4
+2 clicks POW2            - blaster deflection
+2 clicks POW2 long       - force (not pointing up)
+                          - toggle battle mode (pointing up)
+3 clicks POW2            - quote only if global controls are enabled
+3 clicks POW2 long       - revert colorchange only if global controls are enabled
+3 clicks POW2 held       - color change only if global controls are enabled
+4 clicks POW2 held       - spam blast
+hold POW2 + click AUX2   - lightning block
+hold AUX2 + twist        - dim (pointing up)
 */
+
 
 #ifndef PROPS_SABER_BC_4BUTTONS_H
 #define PROPS_SABER_BC_4BUTTONS_H
@@ -902,14 +996,14 @@ public:
   }
 
   void DoUserEffect(int blade, bool aux, bool right) {
-    EffectType effect;
+    int effect;
     if (BladeIsOn(blade))
       effect = aux ? (right ? EFFECT_USER3 : EFFECT_USER4) :
                      (right ? EFFECT_USER1 : EFFECT_USER2);
     else
       effect = aux ? (right ? EFFECT_USER7 : EFFECT_USER8) :
                      (right ? EFFECT_USER5 : EFFECT_USER6);
-    SaberBase::DoEffect(effect, EffectLocation(0, BladeSetFor(blade)));
+    SaberBase::DoEffect((EffectType)effect, EffectLocation(0, BladeSetFor(blade)));
   }
 
   EffectLocation GetThrustBladeLocation() {
@@ -1415,6 +1509,7 @@ private:
   uint32_t last_blast_millis_ = millis();
   uint32_t saber_off_time_ = millis();
   uint32_t saber_on_time_ = millis();
+  Vec3 accel_;
   BladeSet thrusting_blade_ = BC_MAIN_BLADE_SET;
 };
 
