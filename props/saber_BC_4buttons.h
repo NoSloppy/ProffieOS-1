@@ -1,120 +1,218 @@
 /*
-  saber_BC_4buttons.h
+saber_BC_4buttons.h
   Copyright (c) 2016-2019 Fredrik Hubinette
   Copyright (c) 2023-2025 Brian Conner with contributions by:
   Fredrik Hubinette, Fernando da Rosa, Matthew McGeary, and Scott Weber.
   Distributed under the terms of the GNU General Public License v3.
 
-  Derived from saber_BC_buttons.h. This prop controls a dual-blade staff
-  from one Proffieboard using two independent pairs of physical buttons.
+This prop is for a staff saber with two blades and four buttons.
+It lets one Proffieboard control both blades.
 
-  Proffieboard V3.9 button mapping:
-    POW1 -> powerButtonPin -> BUTTON_POWER -> main blade
-    AUX1 -> auxPin         -> BUTTON_AUX   -> main blade
-    POW2 -> blade5Pin      -> BC4_POW2_BUTTON (default BUTTON_AUX2) -> second blade
-    AUX2 -> aux2Pin        -> BC4_AUX2_BUTTON (default BUTTON_SELECT) -> second blade
+This file is based on saber_BC_buttons.h.
 
-  Required config:
-    #define NUM_BUTTONS 4
-    #define BC4_POW2_BUTTON BUTTON_AUX2
-    #define BC4_AUX2_BUTTON BUTTON_SELECT
-    Button PowerButton(BUTTON_POWER, powerButtonPin, "pow");
-    Button AuxButton(BUTTON_AUX, auxPin, "aux");
-    Button Pow2Button(BC4_POW2_BUTTON, blade5Pin, "pow2");
-    Button Aux2Button(BC4_AUX2_BUTTON, aux2Pin, "aux2");
-    #define BC_DUAL_BLADES        // implied by this prop
-    #define DYNAMIC_BLADE_LENGTH  // optional, required for blade-length menu
-    #define PROP_TYPE SaberBC4Buttons
-    #include "../props/saber_BC_4buttons.h"
+------------------------ BUTTON SETUP ------------------------
 
-  BUTTON_SELECT is the available fourth independent saber button ID in this
-  tree. BUTTON_UP/DOWN/LEFT/RIGHT and BUTTON_SELECT have aliases used by
-  other prop types; this prop reserves BUTTON_SELECT for AUX2. Do not use
-  this mapping for a simultaneous D-pad/blaster control configuration.
+Use these buttons on a Proffieboard V3.9:
 
-  Optional defines:
-    BC4_POW2_BUTTON / BC4_AUX2_BUTTON - override the two second-pair button IDs.
-    BC_MAIN_BLADE / BC_SECOND_BLADE - BladeConfig indices (defaults 1 and 2).
-    BC_SWING_ON, BC_TWIST_ON, BC_TWIST_OFF, BC_THRUST_ON
-    NO_BLADE_NO_GEST_ONOFF, BC_FORCE_PUSH, BC_FORCE_PUSH_LENGTH
-    BC_NO_BM, BC_GESTURE_AUTO_BATTLE_MODE, BC_ENABLE_AUTO_SWING_BLAST
-    BC_LOCKUP_DELAY, BC_SWING_ON_SPEED, MOTION_TIMEOUT, BC_BUTTON_CLICKER
-    FEMALE_TALKIE_VOICE
-    MENU_SPEC_TEMPLATE - use a ProffieOS menu spec instead of BC menus.
-    DYNAMIC_BLADE_LENGTH - enables blade-length editing.
-    BC4_GLOBAL_FROM_BOTH_GROUPS - allow either pair to invoke board-wide controls.
+  POW1  - powerButtonPin - controls the MAIN blade
+  AUX1  - auxPin         - controls the MAIN blade
+  POW2  - blade5Pin      - controls the SECOND blade
+  AUX2  - aux2Pin        - controls the SECOND blade
 
-  Gesture notes:
-    Swing/twist ignition turns on both controlled blades; twist-off turns both
-    off. Thrust ignition/stab is assigned to the blade indicated by the shared
-    IMU. For a second-blade button action, blade up/down is reversed relative to
-    the main blade. Clash without a held button uses the blade above the horizon.
-    Gestures with a held button use that button's blade group.
+The names BUTTON_POWER, BUTTON_AUX, BUTTON_AUX2 and BUTTON_SELECT are
+software button IDs. They are not pin names.
 
-  Global controls are main-pair-only by default: preset/scrolling, volume and
-  blade-length/OS menus, battery, track, quotes, color, blade ID and blade-array
-  controls. They share one preset, font, volume and audio system. Define
-  BC4_GLOBAL_FROM_BOTH_GROUPS to also permit those controls from POW2/AUX2.
-  User effects use the same IDs on both blades: POW twist = USER1/2 when on
-  and USER5/6 when off; AUX twist = USER3/4 when on and USER7/8 when off.
+This ProffieOS version has no BUTTON_FREE1 ID. The prop assigns the
+available BUTTON_AUX2 ID to POW2 and BUTTON_SELECT to AUX2.
+You do not need to add these defines to your config; the prop sets
+these defaults for you.
 
-  ---------------------- Main blade (POW1/AUX1) ----------------------
-  OFF:
-    POW click: ignite (bypass preon when pointing up); double click or hold
-    POW and twist: muted ignite. Hold POW: scroll presets (twist to cycle,
-    click to ignite, hold to exit). AUX click: next/previous/first preset
-    (level/down/up). POW long click: track. 3 clicks POW: quote; point main
-    blade down to toggle sequential/random quotes. Hold POW + click AUX or
-    clash: volume menu. Hold AUX + click POW: spoken battery (volts when
-    pointing down); hold AUX + long-click POW: on-demand battery. Double-hold
-    POW: blade-length menu or OS menu. 4-click hold POW: next blade array;
-    4-click long POW: blade ID scan. POW/AUX twist: USER5-8.
-  ON:
-    POW/AUX click or double click: blast. Long-click POW: track. Hold POW:
-    turn main blade off (bypass postoff when pointing up); hold POW + twist:
-    fast preset change (main up/down/level selects first/previous/next).
-    Hold POW + clash: lockup, or drag when main blade points down. Hold POW +
-    click AUX: lightning block. Double-click-long POW: force when not pointing
-    up, battle-mode toggle when pointing up. 3 clicks POW: quote or toggle
-    sequential/random quotes when pointing down. 3-click hold POW: color mode;
-    3-click long POW: revert color. 4-click hold POW: spam blast when pointing
-    down. Hold AUX + twist: power-save dim when main blade points up.
-    POW/AUX twist-left/right: USER1-4. Clash with no held button: clash, or
-    battle-mode auto-lockup. Thrust: stab; stab impact: melt; push: force push.
+Put these lines in the button section at the bottom of your config:
 
-  By-clicks summary (Main blade):
-    OFF: POW 1=ignite, 2=muted ignite, hold+twist=muted ignite, long=track,
-         3=quote/random, hold=scroll, double-hold=blade length/OS menu,
-         4-hold=next array, 4-long=blade ID; AUX 1=preset; hold POW+AUX
-         click/clash=volume; hold AUX+POW click/long=battery.
-    ON: POW/AUX 1 or 2=blast; POW long=track, hold=off, hold+twist=fast
-        preset, hold+clash=lockup/drag, double-long=force/battle, 3=quote/
-        random, 3-hold=color, 3-long=revert color, 4-hold=spam; hold POW+AUX
-        click=lightning; hold AUX+twist=dim; POW/AUX twist=user effects.
+  Button PowerButton(BUTTON_POWER, powerButtonPin, "pow");
+  Button AuxButton(BUTTON_AUX, auxPin, "aux");
+  Button Pow2Button(BC4_POW2_BUTTON, blade5Pin, "pow2");
+  Button Aux2Button(BC4_AUX2_BUTTON, aux2Pin, "aux2");
 
-  ---------------------- Second blade (POW2/AUX2) -------------------
-  OFF:
-    POW2 click: ignite (bypass preon when second blade points up); double
-    click or hold POW2 and twist: muted ignite. All other controls mirror
-    the local main-pair controls, but board-global actions (preset, scroll,
-    menus, battery, track, quotes, color, blade ID and blade array) are ignored
-    unless BC4_GLOBAL_FROM_BOTH_GROUPS is defined. POW2/AUX2 twist: USER5-8.
-  ON:
-    POW2/AUX2 click or double click: blast. Hold POW2: turn second blade off
-    (bypass postoff when that blade points up). Hold POW2 + clash: second-blade
-    lockup or drag when that blade points down. Hold POW2 + click AUX2:
-    lightning block. Double-click-long POW2: force or battle-mode toggle when
-    second blade points up. 4-click hold POW2: spam blast when second blade
-    points down. Hold AUX2 + twist: power-save dim when second blade points up.
-    POW2/AUX2 twist-left/right: USER1-4. Clash with no held button follows the
-    shared IMU and blade-above-horizon fallback, not button-based selection.
+The prop defines BC4_POW2_BUTTON and BC4_AUX2_BUTTON when it is included.
+If you want different button IDs, define those names in your config
+before the prop is included. Each button must use a different ID.
+BUTTON_SELECT is also used by some other ProffieOS features, so do not
+use those features together with this button mapping.
 
-  By-clicks summary (Second blade):
-    OFF: POW2 1=ignite, 2=muted ignite, hold+twist=muted ignite; board-global
-         actions are ignored by default.
-    ON: POW2/AUX2 1 or 2=blast; POW2 hold=off, hold+clash=lockup/drag,
-        double-long=force/battle, 4-hold=spam; hold POW2+AUX2 click=lightning;
-        hold AUX2+twist=dim; POW2/AUX2 twist=user effects.
+In the top section of your config, set:
+
+  #define NUM_BUTTONS 4
+
+Then, in the prop section of your config, include this file:
+
+  #include "../props/saber_BC_4buttons.h"
+
+Including this file selects the SaberBC4Buttons prop automatically.
+You do not need to add a separate PROP_TYPE line.
+
+The prop turns on dual-blade mode automatically. You do not need to add
+#define BC_DUAL_BLADES. Add #define DYNAMIC_BLADE_LENGTH only if you want
+to use the blade-length menu.
+
+------------------------ OPTIONAL DEFINES ------------------------
+
+#define BC_SWING_ON
+#define BC_TWIST_ON
+#define BC_TWIST_OFF
+#define BC_THRUST_ON
+
+- Enable the matching motion gesture.
+- Swing or twist ignition turns on both blades. Twist-off turns both off.
+- Thrust ignition selects a blade using the motion sensor.
+
+#define NO_BLADE_NO_GEST_ONOFF
+- With blade detect enabled, do not use gesture ignition or retraction
+  while no blade is installed.
+
+#define BC_FORCE_PUSH
+- Enable the push gesture for Force.
+
+#define BC_FORCE_PUSH_LENGTH
+- Set how long the push gesture must be held. Default is 5.
+
+#define BC_NO_BM
+- Disable Battle Mode.
+
+#define BC_GESTURE_AUTO_BATTLE_MODE
+- Enter Battle Mode when a gesture turns the blades on.
+- Do not use together with BC_NO_BM.
+
+#define BC_ENABLE_AUTO_SWING_BLAST
+- Swing after a blast to trigger another blast.
+
+BC_MAIN_BLADE and BC_SECOND_BLADE
+- Change which BladeConfig entries are the main and second blades.
+- Defaults are blade 1 and blade 2. For example, use
+  #define BC_MAIN_BLADE 2 if the main blade is the second BladeConfig entry.
+
+BC4_POW2_BUTTON and BC4_AUX2_BUTTON
+- Change the software button IDs used by the second button pair.
+- The defaults are BUTTON_AUX2 for POW2 and BUTTON_SELECT for AUX2.
+- Only change these if you know another button ID is available. Set the
+  new IDs before including this prop.
+
+#define DYNAMIC_BLADE_LENGTH
+- Enable the blade-length menu.
+- Set a maximum blade length in the BladeConfig section of your config.
+
+#define MENU_SPEC_TEMPLATE DefaultMenuSpec
+- Use the ProffieOS menu instead of the BC volume and blade-length menus.
+
+#define BC4_GLOBAL_FROM_BOTH_GROUPS
+- Let POW2/AUX2 use the board-wide controls listed below.
+- By default, only POW1/AUX1 can use those controls.
+
+BC_LOCKUP_DELAY, BC_SWING_ON_SPEED, MOTION_TIMEOUT,
+BC_BUTTON_CLICKER and FEMALE_TALKIE_VOICE are also supported.
+
+------------------------ GESTURE NOTES ------------------------
+
+One board has one motion sensor. It cannot tell which blade you mean
+from movement alone.
+
+If you hold a button while making a gesture, the prop uses that
+button's blade group when the control applies to a blade.
+When no button is held, thrust selects a blade from the direction of
+the motion, and a clash uses the blade above the horizon.
+
+The two blades point in opposite directions. So, "pointing up" for the
+second blade means the main blade is pointing down.
+
+------------------------ GLOBAL CONTROLS ------------------------
+
+The board has one preset, font, volume and audio system. These controls
+are assigned to POW1/AUX1 by default:
+
+  Preset change and scroll presets
+  Volume, blade-length and OS menus
+  Spoken and on-demand battery level
+  Track start/stop and quotes
+  Color change and color reset
+  Blade ID scan and next blade array
+
+Define BC4_GLOBAL_FROM_BOTH_GROUPS if you also want POW2/AUX2 to use them.
+
+------------------------ MAIN BLADE CONTROLS ------------------------
+
+POW1 = powerButtonPin      AUX1 = auxPin
+
+When the main blade is OFF:
+
+  Click POW1                 Turn the main blade on.
+  Double-click POW1          Turn the main blade on muted.
+  Hold POW1 and twist        Turn the main blade on muted.
+  Click AUX1                 Change preset: up = first, down = previous,
+                             otherwise next.
+  Long-click POW1            Start or stop the track.
+  3 clicks POW1              Play a quote. Point down to toggle quote order.
+  Hold POW1 and click AUX1   Enter the volume menu.
+  Hold POW1 and clash        Enter the volume menu.
+  Hold AUX1, click POW1      Speak the battery level.
+  Hold AUX1, long-click POW1 Play the on-demand battery level effect.
+  Hold POW1                  Enter scroll presets.
+  Double-click and hold POW1 Enter the blade-length or OS menu.
+  4 clicks and hold POW1     Select the next blade array.
+  4 clicks, long-click POW1  Scan the blade ID.
+
+When the main blade is ON:
+
+  Click or double-click POW1 or AUX1  Blaster deflection.
+  Hold POW1                           Turn the main blade off.
+  Hold POW1 and twist                 Change preset quickly.
+  Hold POW1 and clash                 Lockup; drag when pointing down.
+  Hold POW1, click AUX1               Lightning block.
+  Double-click then hold POW1         Force; point up to toggle Battle Mode.
+  3 clicks POW1                       Play a quote; point down to change
+                                      sequential/random quote playback.
+  3 clicks then hold POW1             Enter color change mode.
+  3 clicks, long-click POW1           Reset the color.
+  4 clicks then hold POW1             Toggle spam blast when pointing down.
+  Hold AUX1 and twist                 Dim the blade when pointing up.
+  Hold a button and twist             Trigger that button's user effect.
+  Clash with no button held           Clash, or Battle Mode lockup.
+  Thrust                             Stab.
+  Stab an object                      Melt.
+  Push                               Force push (requires BC_FORCE_PUSH).
+
+------------------------ SECOND BLADE CONTROLS ------------------------
+
+POW2 = blade5Pin           AUX2 = aux2Pin
+
+When the second blade is OFF:
+
+  Click POW2                 Turn the second blade on.
+  Double-click POW2          Turn the second blade on muted.
+  Hold POW2 and twist        Turn the second blade on muted.
+
+When the second blade is ON:
+
+  Click or double-click POW2 or AUX2  Blaster deflection.
+  Hold POW2                           Turn the second blade off.
+  Hold POW2 and clash                 Lockup; drag when that blade points down.
+  Hold POW2, click AUX2               Lightning block.
+  Double-click then hold POW2         Force; point that blade up to toggle
+                                      Battle Mode.
+  4 clicks then hold POW2             Toggle spam blast when that blade
+                                      points down.
+  Hold AUX2 and twist                 Dim the blade when it points up.
+  Hold a button and twist             Trigger the matching user effect.
+
+The second pair uses the same user effects as the main pair:
+
+  POW twist right/left      USER1/USER2 when that blade is on
+                            USER5/USER6 when that blade is off
+  AUX twist right/left      USER3/USER4 when that blade is on
+                            USER7/USER8 when that blade is off
+
+The second pair does not change presets, enter menus, read the battery,
+control the track or quotes, change colors, scan blade IDs, or change
+blade arrays unless BC4_GLOBAL_FROM_BOTH_GROUPS is defined.
 */
 
 #ifndef PROPS_SABER_BC_4BUTTONS_H
