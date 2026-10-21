@@ -1503,6 +1503,21 @@ public:
     }
   }
 
+#ifdef BC_ANNOUNCE_PRESET_NUM
+  // Announce the (1-based) preset number via the sound library, then queue
+  // font.wav behind it so it plays once the number has finished.
+  void SetPreset(int preset_num, bool announce) override {
+    if (!announce) {
+      PropBase::SetPreset(preset_num, false);
+      return;
+    }
+    PropBase::SetPreset(preset_num, false);
+    PVLOG_STATUS << "Current Preset: " << current_preset_name() << "\n";
+    sound_library_.SayNumber(current_preset_.preset_num + 1, SAY_WHOLE);
+    SOUNDQ->Play(SoundToPlay(&SFX_font));
+  }
+#endif
+
   void Loop() override {
     PropBase::Loop();
     DetectTwist();
