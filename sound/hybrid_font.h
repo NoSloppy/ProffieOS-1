@@ -267,7 +267,6 @@ public:
     }
     return player;
   }
-
   RefPtr<BufferedWavPlayer> PlayPolyphonic(Effect* f)  {
     return PlayPolyphonic(f->RandomFile());
   }
@@ -561,7 +560,7 @@ public:
         break;
       case OFF_BLAST:
         SaberBase::DoEffect(EFFECT_BOOM, 0);
-        PVLOG_VERBOSE << "+++++ BOOM!! +++++\n";
+        PVLOG_NORMAL << "+++++ BOOM!! +++++\n";  // this is BC only because I think this is how it should work (official uses PVLOG_STATUS)
         break;
     }
 
@@ -612,14 +611,20 @@ public:
       case EFFECT_FORCE: PlayCommon(&SFX_force); return;
       case EFFECT_BLAST: Play(&SFX_blaster, &SFX_blst); return;
       case EFFECT_QUOTE: PlayCommon(&SFX_quote); return;
-      case EFFECT_BOOT: PlayPolyphonic(&SFX_boot); return;
-      case EFFECT_NEWFONT: SB_NewFont(); return;
+      case EFFECT_BOOT:
+        if (QueueSoundAfterErrors(&SFX_boot)) return;
+        PlayPolyphonic(&SFX_boot);
+        return;
+      case EFFECT_NEWFONT:
+        if (QueueSoundAfterErrors(&SFX_font, 0.05f, 1046.5f)) return;
+        SB_NewFont(); return;
       case EFFECT_LOCKUP_BEGIN: SB_BeginLockup(); return;
       case EFFECT_LOCKUP_END: SB_EndLockup(); return;
       case EFFECT_LOW_BATTERY: SB_LowBatt(); return;
-      case EFFECT_ALT_SOUND:
+      case EFFECT_ALT_SOUND: {
+        int previous_alternative = 0;  // this is BC only because I think this is how it should work
         if (num_alternatives) {
-          int previous_alternative = current_alternative;
+          previous_alternative = current_alternative;
           if (SaberBase::sound_number == -1) {
             // Next alternative
             if (++current_alternative >= num_alternatives)  current_alternative = 0;
@@ -631,8 +636,11 @@ public:
           }
           RestartHum(previous_alternative);
         }
+        SFX_altchng.Select(previous_alternative);  // this is BC only because I think this is how it should work
+        // see https://crucible.hubbe.net/t/jetpack-prop-update-and-questions-with-very-instructive-alt-sound-discussion/6648/41?u=nosloppy
         PlayCommon(&SFX_altchng);
         break;
+      }
       case EFFECT_BLADEIN:
         SB_BladeDetect(SFX_bladein);
         break;
@@ -649,18 +657,23 @@ public:
         }
         break;
       case EFFECT_FONT_DIRECTORY_NOT_FOUND:
+PVLOG_DEBUG << "*************SHOULD BE PLAYING Font Dir Not Found WAV HERE\n";
         PlayErrorMessage("e_fnt_nf.wav");
         break;
       case EFFECT_VOICE_PACK_NOT_FOUND:
+PVLOG_DEBUG << "*************SHOULD BE PLAYING Voice pack not found WAV HERE\n";
         PlayErrorMessage("e_vp_nf.wav");
         break;
       case EFFECT_ERROR_IN_BLADE_ARRAY:
+PVLOG_DEBUG << "*************SHOULD BE PLAYING Error in blade WAV HERE\n";
         PlayErrorMessage("e_blade.wav");
         break;
       case EFFECT_ERROR_IN_FONT_DIRECTORY:
+PVLOG_DEBUG << "*************SHOULD BE PLAYING Error in Font Dir WAV HERE\n";
         PlayErrorMessage("e_in_fnt.wav");
         break;
       case EFFECT_ERROR_IN_VOICE_PACK_VERSION:
+PVLOG_DEBUG << "*************SHOULD BE PLAYING Error in Voice Pack Ver WAV HERE\n";
         PlayErrorMessage("e_vp_ver.wav");
         break;
     }
