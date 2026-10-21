@@ -646,7 +646,14 @@ public:
     return 15;
   }
   virtual void DrawScreenText(const char* message, int y, const Glyph* font) {
-    display_->DrawText(message, 0, y, font);
+    display_->DrawText(message, 0, y, font, TextScale());
+  }
+  // Default scale keeps glyphs proportioned to the actual panel height
+  // (e.g. 48/64 for a 64x48 OLED). Returns 1.0 when HardwareHeight()
+  // matches HEIGHT, so existing displays are unaffected. Override for
+  // full control if the automatic ratio isn't what you want.
+  virtual float TextScale() {
+    return (float)display_->HardwareHeight() / HEIGHT;
   }
   virtual void DrawScreenBatteryBar(const Glyph& bar, float percent) {
     display_->DrawBatteryBar(bar, percent);
