@@ -1228,26 +1228,30 @@ EFFECT(monosfx);    // for Monophonically played sounds (iceblade, seismic charg
 struct BCSoundFontPreview : public SoundToPlayBase {
   explicit BCSoundFontPreview(const char* dir) : dir_(dir) {}
   bool Play(BufferedWavPlayer* player) override {
-    // Pick a random file named font*.wav (font.wav, font01.wav, "font 1.wav", font5.wav, ...)
+    STDOUT << "+++++ font preview Play dir=" << dir_ << "\n";
+    // Fast path (the original, known-working behavior).
+    if (player->PlayInDir(dir_, "font.wav") || player->PlayInDir(dir_, "font01.wav")) return true;
+    // Fallback: any other font*.wav name (font02.wav, "font 1.wav", font5.wav, ...)
     char pick[64];
     int found = 0;
-    LOCK_SD(true);  // the iterator finds nothing unless the SD card is mounted
+    LOCK_SD(true);
     {
-    LSFS::Iterator iter(dir_);
-    for (; iter; ++iter) {
-      const char* n = iter.name();
-      if (iter.isdir() || n[0] == '.' || strlen(n) >= sizeof(pick)) continue;
-      if (strncasecmp(n, "font", 4) != 0) continue;
-      char c = n[4];
-      if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) continue;  // e.g. fontx.wav
-      size_t len = strlen(n);
-      if (len < 8 || strcasecmp(n + len - 4, ".wav") != 0) continue;
-      found++;
-      if (random(found) == 0) strcpy(pick, n);  // reservoir sampling
-    }
+      LSFS::Iterator iter(dir_);
+      for (; iter; ++iter) {
+        const char* n = iter.name();
+        if (iter.isdir() || n[0] == '.' || strlen(n) >= sizeof(pick)) continue;
+        if (strncasecmp(n, "font", 4) != 0) continue;
+        char c = n[4];
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) continue;  // e.g. fontx.wav
+        size_t len = strlen(n);
+        if (len < 8 || strcasecmp(n + len - 4, ".wav") != 0) continue;
+        found++;
+        if (random(found) == 0) strcpy(pick, n);  // reservoir sampling
+      }
     }
     LOCK_SD(false);
-    if (!found) return player->PlayInDir(dir_, "font.wav");
+    STDOUT << "+++++ font preview fallback scan found=" << found << "\n";
+    if (!found) return false;
     return player->PlayInDir(dir_, pick);
   }
   const char* dir_;
