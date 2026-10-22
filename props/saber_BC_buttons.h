@@ -1228,7 +1228,23 @@ EFFECT(monosfx);    // for Monophonically played sounds (iceblade, seismic charg
 struct BCSoundFontPreview : public SoundToPlayBase {
   explicit BCSoundFontPreview(const char* dir) : dir_(dir) {}
   bool Play(BufferedWavPlayer* player) override {
-    return player->PlayInDir(dir_, "font.wav") || player->PlayInDir(dir_, "font01.wav");
+    // Pick a random file named font*.wav (font.wav, font01.wav, "font 1.wav", font5.wav, ...)
+    char pick[64];
+    int found = 0;
+    LSFS::Iterator iter(dir_);
+    for (; iter; ++iter) {
+      const char* n = iter.name();
+      if (iter.isdir() || n[0] == '.' || strlen(n) >= sizeof(pick)) continue;
+      if (strncasecmp(n, "font", 4) != 0) continue;
+      char c = n[4];
+      if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) continue;  // e.g. fontx.wav
+      size_t len = strlen(n);
+      if (len < 8 || strcasecmp(n + len - 4, ".wav") != 0) continue;
+      found++;
+      if (random(found) == 0) strcpy(pick, n);  // reservoir sampling
+    }
+    if (!found) return false;
+    return player->PlayInDir(dir_, pick);
   }
   const char* dir_;
 };
@@ -1249,6 +1265,7 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
   uint32_t last_click_ = 0;
   bool announced_ = false;       // font.wav (and number) of the target were queued
   uint32_t announced_time_ = 0;
+  bool scrolled_ = false;        // any click since last apply (pending_ may net to 0)
 
   // Fade out anything playing (font.wav, hum, etc.) so the click beeps are audible.
   // Non-blocking: only starts the fade.
@@ -1266,7 +1283,8 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
   }
 
   void applyPending() {
-    if (pending_ == 0) return;
+    if (!scrolled_) return;
+    scrolled_ = false;
     int delta = pending_;
     pending_ = 0;
     bool announced = announced_;
@@ -1278,6 +1296,8 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
   void mode_activate(bool onreturn) override {
     SPEC::SteppedMode::mode_activate(onreturn);
     pending_ = 0;
+    scrolled_ = false;
+    announced_ = false;
   }
 
   void mode_deactivate() override {
@@ -1287,7 +1307,7 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
 
   void mode_Loop() override {
     SPEC::SteppedMode::mode_Loop();
-    if (pending_ != 0) {
+    if (scrolled_) {
       if (!announced_) {
         // Stage 1: rotation settled. Just say the target's number and play its font.wav.
         if ((uint32_t)(millis() - last_click_) > SETTLE_MS && bc_preset_scroller) {
@@ -1308,6 +1328,7 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
     FadeOutAudio();
     beeper.Beep(0.05, 4000);
     pending_++;
+    scrolled_ = true;
     last_click_ = millis();
     announced_ = false;  // rotation resumed: abort the preview, track until next settle
 
@@ -1317,6 +1338,7 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
     FadeOutAudio();
     beeper.Beep(0.05, 3000);
     pending_--;
+    scrolled_ = true;
     last_click_ = millis();
     announced_ = false;
   }
