@@ -1309,18 +1309,15 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
     SPEC::SteppedMode::mode_Loop();
     if (scrolled_) {
       if (!announced_) {
-        // Stage 1: rotation settled. Just say the target's number and play its font.wav.
+        // Rotation settled. Just say the target's number and play its font.wav.
         if ((uint32_t)(millis() - last_click_) > SETTLE_MS && bc_preset_scroller) {
           bc_preset_scroller->AnnouncePreset(pending_);
           announced_ = true;
           announced_time_ = millis();
           STDOUT << "+++++ stage 1: announced target, pending=" << pending_ << "\n";
         }
-      } else if ((uint32_t)(millis() - announced_time_) > 150 && !SOUNDQ->busy()) {
-        // Stage 2: audio finished without further rotation. Now do the real (slow) SetPreset().
-        STDOUT << "+++++ stage 2: audio done, applying preset\n";
-        applyPending();
       }
+      // No stage 2: the real (slow) SetPreset() waits for ignition or exit (applyPending()).
     }
   }
 
