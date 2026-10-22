@@ -1317,7 +1317,6 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
           STDOUT << "+++++ stage 1: announced target, pending=" << pending_ << "\n";
         }
       }
-      // No stage 2: the real (slow) SetPreset() waits for ignition or exit (applyPending()).
     }
   }
 
