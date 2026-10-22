@@ -1231,6 +1231,8 @@ struct BCSoundFontPreview : public SoundToPlayBase {
     // Pick a random file named font*.wav (font.wav, font01.wav, "font 1.wav", font5.wav, ...)
     char pick[64];
     int found = 0;
+    LOCK_SD(true);  // the iterator finds nothing unless the SD card is mounted
+    {
     LSFS::Iterator iter(dir_);
     for (; iter; ++iter) {
       const char* n = iter.name();
@@ -1243,7 +1245,9 @@ struct BCSoundFontPreview : public SoundToPlayBase {
       found++;
       if (random(found) == 0) strcpy(pick, n);  // reservoir sampling
     }
-    if (!found) return false;
+    }
+    LOCK_SD(false);
+    if (!found) return player->PlayInDir(dir_, "font.wav");
     return player->PlayInDir(dir_, pick);
   }
   const char* dir_;
