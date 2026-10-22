@@ -1573,8 +1573,13 @@ public:
   SaberBCButtons() : PropBase() {}
   const char* name() override { return "SaberBCButtons_Personal"; }
 
-  // Avoid pops: fade out whatever is playing before the preset swap touches the SD card.
   void SetPreset(int preset_num, bool announce) override {
+#ifdef BC_ANNOUNCE_PRESET_NUM
+    STDOUT << "+++++ SetPreset(" << preset_num << ", announce=" << announce << ") t=" << millis() << "\n";
+    // Drop any number/font.wav still queued from a previous preset change.
+    SOUNDQ->clear_pending();
+#endif
+  // Avoid pops: fade out whatever is playing before the preset swap touches the SD card.
 #ifdef ENABLE_AUDIO
     for (size_t unit = 0; unit < NELEM(wav_players); unit++) {
       if (wav_players[unit].isPlaying()) {
@@ -1585,6 +1590,35 @@ public:
     uint32_t start = millis();
     for (size_t unit = 0; unit < NELEM(wav_players); unit++) {
       while (wav_players[unit].isPlaying() && millis() - start < 50) delay(1);
+    }
+#endif
+#ifdef BC_ANNOUNCE_PRESET_NUM
+    wav_player.Free();
+    // if (announce) {
+    //   // Skip the immediate font.wav; say the (1-based) preset number, then queue font.wav behind it.
+    //   PropBase::SetPreset(preset_num, false);
+    //   PVLOG_STATUS << "Current Preset Number: " << current_preset_.preset_num + 1 << "\n";
+    //   PVLOG_STATUS << "Current Preset: " << current_preset_name() << "\n";
+    //   sound_library_.SayNumber(current_preset_.preset_num + 1, SAY_WHOLE);
+    //   SOUNDQ->Play(SoundToPlay(&SFX_font));
+    //   return;
+    // }
+    STDOUT << "+++++ SetPreset(" << preset_num << ", announce=" << announce << ") t=" << millis() << "\n";
+    for (size_t u = 0; u < NELEM(wav_players); u++)
+      STDOUT << "+++++   entry unit" << u << " playing=" << wav_players[u].isPlaying()
+             << " refs=" << wav_players[u].refs() << " file=" << wav_players[u].filename() << "\n";
+    STDOUT << "+++++   our wav_player=" << (wav_player ? "held" : "null") << " SOUNDQ busy=" << SOUNDQ->busy() << "\n";
+    SOUNDQ->clear_pending();
+    announce_preset_timer_.stopTimer();
+    STDOUT << "+++++   queue cleared, announce timer stopped\n";
+    if (announce) {
+      // Skip the immediate font.wav; the number + font.wav are queued from Loop() once changes settle.
+      PropBase::SetPreset(preset_num, false);
+      PVLOG_STATUS << "Current Preset Number: " << current_preset_.preset_num + 1 << "\n";
+      PVLOG_STATUS << "Current Preset: " << current_preset_name() << "\n";
+      announce_preset_timer_.trigger(400);
+      STDOUT << "+++++   timer armed, will announce #" << current_preset_.preset_num + 1 << "\n";
+      return;
     }
 #endif
     PropBase::SetPreset(preset_num, announce);
@@ -1749,6 +1783,12 @@ public:
     if (scroll_presets_beep_delay_timer_.isTimerExpired()) {
         SaberBase::DoEffect(EFFECT_NEWFONT, 0);
     }
+#ifdef BC_ANNOUNCE_PRESET_NUM
+    if (announce_preset_timer_.isTimerExpired()) {
+      sound_library_.SayNumber(current_preset_.preset_num + 1, SAY_WHOLE);
+      SOUNDQ->Play(SoundToPlay(&SFX_font));
+    }
+#endif
   }  // Loop()
 
 #ifdef SPEAK_BLADE_ID
@@ -3188,6 +3228,9 @@ private:
   DelayTimer mute_mainBlade_delay_timer_;
   DelayTimer mute_secondBlade_delay_timer_;
   DelayTimer scroll_presets_beep_delay_timer_;
+#ifdef BC_ANNOUNCE_PRESET_NUM
+  DelayTimer announce_preset_timer_;
+#endif
 
   bool battle_mode_ = false;
   bool auto_lockup_on_ = false;
