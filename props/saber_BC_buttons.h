@@ -1229,29 +1229,25 @@ struct BCSoundFontPreview : public SoundToPlayBase {
   explicit BCSoundFontPreview(const char* dir) : dir_(dir) {}
   bool Play(BufferedWavPlayer* player) override {
     STDOUT << "+++++ font preview Play dir=" << dir_ << "\n";
-    // Fast path (the original, known-working behavior).
-    if (player->PlayInDir(dir_, "font.wav") || player->PlayInDir(dir_, "font01.wav")) return true;
-    // Fallback: any other font*.wav name (font02.wav, "font 1.wav", font5.wav, ...)
+    // Play the first font*.wav found (font.wav, font01.wav, "font 1.wav", font5.wav, ...)
     char pick[64];
-    int found = 0;
-    LOCK_SD(true);
+    bool found = false;
+    LOCK_SD(true);  // mounts the card; the iterator finds nothing if it's unmounted
     {
       LSFS::Iterator iter(dir_);
       for (; iter; ++iter) {
         const char* n = iter.name();
-        if (iter.isdir() || n[0] == '.' || strlen(n) >= sizeof(pick)) continue;
-        if (strncasecmp(n, "font", 4) != 0) continue;
-        char c = n[4];
-        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) continue;  // e.g. fontx.wav
         size_t len = strlen(n);
-        if (len < 8 || strcasecmp(n + len - 4, ".wav") != 0) continue;
-        found++;
-        if (random(found) == 0) strcpy(pick, n);  // reservoir sampling
+        if (iter.isdir() || len < 8 || len >= sizeof(pick)) continue;
+        if (strncasecmp(n, "font", 4) != 0) continue;
+        if (strcasecmp(n + len - 4, ".wav") != 0) continue;
+        strcpy(pick, n);
+        found = true;
+        break;
       }
     }
     LOCK_SD(false);
-    STDOUT << "+++++ font preview fallback scan found=" << found << "\n";
-    if (!found) return false;
+    if (!found) return player->PlayInDir(dir_, "font.wav");
     return player->PlayInDir(dir_, pick);
   }
   const char* dir_;
