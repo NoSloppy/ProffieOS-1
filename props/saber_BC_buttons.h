@@ -1272,6 +1272,7 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
     bool announced = announced_;
     announced_ = false;
     if (bc_preset_scroller) bc_preset_scroller->ScrollPresets(delta, announced);
+
   }
 
   void mode_activate(bool onreturn) override {
@@ -1309,6 +1310,7 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
     pending_++;
     last_click_ = millis();
     announced_ = false;  // rotation resumed: abort the preview, track until next settle
+
   }
 
   void prev() override {
