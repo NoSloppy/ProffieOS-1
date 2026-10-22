@@ -1265,7 +1265,7 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
   uint32_t last_click_ = 0;
   bool announced_ = false;       // font.wav (and number) of the target were queued
   uint32_t announced_time_ = 0;
-  bool scrolled_ = false;        // any click since last apply (pending_ may net to 0)
+  bool scrolled_ = false;        // any rotation click since last apply (pending_ may net to 0)
 
   // Fade out anything playing (font.wav, hum, etc.) so the click beeps are audible.
   // Non-blocking: only starts the fade.
