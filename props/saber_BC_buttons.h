@@ -1223,7 +1223,6 @@ EFFECT(press);      // for button press clicks when OFF only.
 EFFECT(monosfx);    // for Monophonically played sounds (iceblade, seismic charge etc...)
 
 // Avoid edits to prop_base.h or ProffieOS.ino.
-#ifdef BC_ANNOUNCE_PRESET_NUM
 // Plays font.wav from an explicit font directory (the previewed preset's), without chdir().
 // Holds only a pointer so it fits in the small SOUNDQ buffer; the string must outlive playback.
 struct BCSoundFontPreview : public SoundToPlayBase {
@@ -1233,15 +1232,13 @@ struct BCSoundFontPreview : public SoundToPlayBase {
   }
   const char* dir_;
 };
-#endif
 
 struct BCPresetScroller {
-  // announced = number + font.wav of the target were already played, so just switch silently.
+  // announced = font.wav of the target was already previewed, so just switch silently.
   virtual void ScrollPresets(int delta, bool announced = false) = 0;
-#ifdef BC_ANNOUNCE_PRESET_NUM
-  // Speak the target preset's number and play its font.wav WITHOUT calling SetPreset().
+  // Preview the target preset's font.wav (preceded by its number if BC_ANNOUNCE_PRESET_NUM)
+  // WITHOUT calling SetPreset().
   virtual void AnnouncePreset(int delta) = 0;
-#endif
 };
 BCPresetScroller* bc_preset_scroller = nullptr;
 
@@ -1250,19 +1247,15 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
   static constexpr uint32_t SETTLE_MS = 500;
   int pending_ = 0;
   uint32_t last_click_ = 0;
-#ifdef BC_ANNOUNCE_PRESET_NUM
-  bool announced_ = false;       // number + font.wav of the target were queued
+  bool announced_ = false;       // font.wav (and number) of the target were queued
   uint32_t announced_time_ = 0;
-#endif
 
   // Fade out anything playing (font.wav, hum, etc.) so the click beeps are audible.
   // Non-blocking: only starts the fade.
   void FadeOutAudio() {
 #ifdef ENABLE_AUDIO
-#ifdef BC_ANNOUNCE_PRESET_NUM
     // Drop any queued number/font.wav so nothing starts after the fade.
     SOUNDQ->clear_pending();
-#endif
     for (size_t unit = 0; unit < NELEM(wav_players); unit++) {
       if (wav_players[unit].isPlaying()) {
         wav_players[unit].set_fade_time(0.02);
@@ -1276,13 +1269,10 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
     if (pending_ == 0) return;
     int delta = pending_;
     pending_ = 0;
-#ifdef BC_ANNOUNCE_PRESET_NUM
     bool announced = announced_;
     announced_ = false;
     if (bc_preset_scroller) bc_preset_scroller->ScrollPresets(delta, announced);
-#else
-    if (bc_preset_scroller) bc_preset_scroller->ScrollPresets(delta);
-#endif
+
   }
 
   void mode_activate(bool onreturn) override {
@@ -1297,7 +1287,6 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
 
   void mode_Loop() override {
     SPEC::SteppedMode::mode_Loop();
-#ifdef BC_ANNOUNCE_PRESET_NUM
     if (pending_ != 0) {
       if (!announced_) {
         // Stage 1: rotation settled. Just say the target's number and play its font.wav.
@@ -1313,10 +1302,6 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
         applyPending();
       }
     }
-#else
-    if (pending_ != 0 && (uint32_t)(millis() - last_click_) > SETTLE_MS) {
-      applyPending();
-    }
   }
 
   void next() override {
@@ -1324,9 +1309,8 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
     beeper.Beep(0.05, 4000);
     pending_++;
     last_click_ = millis();
-#ifdef BC_ANNOUNCE_PRESET_NUM
-    announced_ = false;  // rotation resumed: abort the announcement, track until next settle
-#endif
+    announced_ = false;  // rotation resumed: abort the preview, track until next settle
+
   }
 
   void prev() override {
@@ -1334,9 +1318,7 @@ struct BCScrollPresetsMode : public SPEC::SteppedMode {
     beeper.Beep(0.05, 3000);
     pending_--;
     last_click_ = millis();
-#ifdef BC_ANNOUNCE_PRESET_NUM
     announced_ = false;
-#endif
   }
 
   void update() override {  // Overridden to substitute the tick sound
@@ -1627,17 +1609,8 @@ public:
   SaberBCButtons() : PropBase() {}
   const char* name() override { return "SaberBCButtons_Personal"; }
 
-  void SetPreset(int preset_num, bool announce) override {
-#ifdef BC_ANNOUNCE_PRESET_NUM
-    STDOUT << "+++++ SetPreset(" << preset_num << ", announce=" << announce << ") t=" << millis() << "\n";
-    for (size_t u = 0; u < NELEM(wav_players); u++)
-      STDOUT << "+++++   entry unit" << u << " playing=" << wav_players[u].isPlaying()
-             << " refs=" << wav_players[u].refs() << " file=" << wav_players[u].filename() << "\n";
-    STDOUT << "+++++   our wav_player=" << (wav_player ? "held" : "null") << " SOUNDQ busy=" << SOUNDQ->busy() << "\n";
-    // Drop any number/font.wav still queued from a previous preset change.
-    SOUNDQ->clear_pending();
-#endif
   // Avoid pops: fade out whatever is playing before the preset swap touches the SD card.
+  void SetPreset(int preset_num, bool announce) override {
 #ifdef ENABLE_AUDIO
     for (size_t unit = 0; unit < NELEM(wav_players); unit++) {
       if (wav_players[unit].isPlaying()) {
@@ -1651,14 +1624,13 @@ public:
     }
 #endif
 #ifdef BC_ANNOUNCE_PRESET_NUM
-    wav_player.Free();
-
     if (announce) {
       // Skip the immediate font.wav; say the (1-based) preset number, then queue font.wav behind it.
+      SOUNDQ->clear_pending();
+      wav_player.Free();
       PropBase::SetPreset(preset_num, false);
       PVLOG_STATUS << "Current Preset Number: " << current_preset_.preset_num + 1 << "\n";
       PVLOG_STATUS << "Current Preset: " << current_preset_name() << "\n";
-      STDOUT << "+++++   queueing mnum" << current_preset_.preset_num + 1 << " + font\n";
       sound_library_.SayNumber(current_preset_.preset_num + 1, SAY_WHOLE);
       SOUNDQ->Play(SoundToPlay(&SFX_font));
       return;
@@ -1679,23 +1651,22 @@ public:
     int n = current_config->num_presets;
     int target = ((current_preset_.preset_num + delta) % n + n) % n;
     if (target == current_preset_.preset_num) return;
-#ifdef BC_ANNOUNCE_PRESET_NUM
     if (announced) {
-      // Number + font.wav already played; switch silently.
+      // font.wav (and number) already played; switch silently.
 #ifdef SAVE_PRESET
       SaveState(target);
 #endif
+      wav_player.Free();
       SetPreset(target, false);
       PVLOG_STATUS << "Current Preset Number: " << current_preset_.preset_num + 1 << "\n";
       PVLOG_STATUS << "Current Preset: " << current_preset_name() << "\n";
       return;
     }
-#endif
     goto_preset(target);
   }
 
-#ifdef BC_ANNOUNCE_PRESET_NUM
-  // Say the target's number and play its font.wav without touching the current preset/font.
+  // Play the target's font.wav (preceded by its number if BC_ANNOUNCE_PRESET_NUM) without
+  // touching the current preset/font.
   // Only reads presets.ini for the font directory; the heavy SetPreset() happens afterwards.
   void AnnouncePreset(int delta) override {
     int n = current_config->num_presets;
@@ -1708,11 +1679,12 @@ public:
     if (semi) *semi = 0;
     STDOUT << "+++++ AnnouncePreset target=" << target + 1 << " font=" << preview_font_dir_ << "\n";
     SOUNDQ->clear_pending();
+#ifdef BC_ANNOUNCE_PRESET_NUM
     sound_library_.SayNumber(target + 1, SAY_WHOLE);
+#endif
     SOUNDQ->Play(BCSoundFontPreview(preview_font_dir_));
   }
   char preview_font_dir_[128];
-#endif
 
 #ifndef MENU_SPEC_TEMPLATE
   void Setup() override{
