@@ -9,6 +9,11 @@ public:
   // Wav items need a BufferedWavPlayer; talkie/beeper items do not.
   virtual bool needs_player() const { return true; }
   virtual bool wants_dodge() const { return false; }
+  // True while this item is the one currently making sound.
+  // Wav default: the queue's player is still playing.
+  virtual bool is_playing(BufferedWavPlayer* player) const {
+    return player && player->isPlaying();
+  }
   virtual ~SoundToPlayBase() {}
 };
 
@@ -68,6 +73,13 @@ public:
   }
   bool needs_player() const override { return false; }
   bool wants_dodge() const override { return true; }
+  bool is_playing(BufferedWavPlayer* player) const override {
+    return beeper.isPlaying()
+#ifndef DISABLE_TALKIE
+      || talkie.isPlaying()
+#endif
+      ;
+  }
 private:
   void (*fn_)();
 };
@@ -83,6 +95,9 @@ public:
   }
   bool needs_player() const override { return false; }
   bool wants_dodge() const override { return true; }
+  bool is_playing(BufferedWavPlayer* player) const override {
+    return talkie.isPlaying();
+  }
 private:
   const uint8_t* addr_;
   uint32_t rate_;
@@ -99,6 +114,9 @@ public:
   }
   bool needs_player() const override { return false; }
   bool wants_dodge() const override { return dodge_; }
+  bool is_playing(BufferedWavPlayer* player) const override {
+    return beeper.isPlaying();
+  }
 private:
   float length_;
   float freq_;
@@ -300,14 +318,6 @@ public:
 
   // Called from Loop()
   void PollSoundQueue(RefPtr<BufferedWavPlayer>& player) {
-    busy_ = player && player->isPlaying();
-    if (playing_non_wav_) {
-      playing_non_wav_ = beeper.isPlaying();
-#ifndef DISABLE_TALKIE
-      if (talkie.isPlaying()) playing_non_wav_ = true;
-#endif
-      if (playing_non_wav_) busy_ = true;
-    }
     if (fadeout_) {
       fadeout_ = false;
       if (player && player->isPlaying()) {
@@ -318,10 +328,9 @@ public:
         player->FadeAndStop();
       }
     }
-    if (!busy_) {
-      if (queue_.size()) {
-        SoundToPlayBase* item = queue_[0];
-        bool dodge = item->wants_dodge();
+    while (queue_.size()) {
+      SoundToPlayBase* item = queue_[0];
+      if (!playing_front_) {
         if (item->needs_player()) {
           if (!player) {
             player = GetFreeWavPlayer();
@@ -333,26 +342,34 @@ public:
         } else {
           if (player) player.Free();
           item->Play(nullptr);
-          playing_non_wav_ = true;
         }
-        queue_.pop_front();
+        playing_front_ = true;
+        // Wav PlayOnce may not set isPlaying until the next audio loop.
         busy_ = true;
-        dodge_while_busy_ = dodge;
-      } else {
-        if (player) player.Free();
-        dodge_while_busy_ = false;
+        if (item->wants_dodge()) {
+          DodgeSound(250);
+          if (player) player->set_dodge(false);
+        }
+        return;
       }
+      if (item->is_playing(player.get())) {
+        busy_ = true;
+        if (item->wants_dodge()) {
+          DodgeSound(250);
+          if (player) player->set_dodge(false);
+        }
+        return;
+      }
+      queue_.pop_front();
+      playing_front_ = false;
     }
-    if (busy_ && dodge_while_busy_) {
-      DodgeSound(250);
-      if (player) player->set_dodge(false);
-    }
+    busy_ = false;
+    if (player) player.Free();
   }
   bool busy() const { return busy_; }
   bool pending() const { return queue_.size() != 0; }
   // True while an error wav/talkie/beeper is playing or still queued.
   bool holding_errors() {
-    if (dodge_while_busy_) return true;
     for (size_t i = 0; i < queue_.size(); i++) {
       if (queue_[i]->wants_dodge()) return true;
     }
@@ -360,19 +377,20 @@ public:
   }
   void fadeout(float len) {
     queue_.clear();
+    playing_front_ = false;
     fadeout_ = true;
     fadeout_len_ = len;
   }
   void clear_pending() {
     queue_.clear();
+    playing_front_ = false;
   }
 private:
   bool busy_ = false;
   bool fadeout_;
   bool fadeout_len_;
-  bool playing_non_wav_ = false;
-  bool dodge_while_busy_ = false;
-  VirtVec<SoundToPlayBase, QueueLength, QueueLength * 8> queue_;
+  bool playing_front_ = false;
+  VirtVec<SoundToPlayBase, QueueLength, QueueLength * 16> queue_;
 };
 
 #endif // ENABLE_AUDIO
