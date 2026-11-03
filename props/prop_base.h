@@ -1689,8 +1689,8 @@ public:
       return true;
     }
 
-#ifdef MOUNT_SD_SETTING
     if (!strcmp(cmd, "sd")) {
+#ifdef MOUNT_SD_SETTING
       if (arg) {
         bool mountable = atoi(arg) > 0;
         LSFS::SetAllowMount(mountable);
@@ -1706,12 +1706,14 @@ public:
           }
         }
       }
-      STDOUT << "SD Access "
+      STDOUT << "\nSD Access "
              << (LSFS::GetAllowMount() ? "ON" : "OFF")
-             << "\n";
+             << "\n\n";
       return true;
-    }
+#else
+    PVLOG_NORMAL << "MOUNT_SD_SETTING not defined\n";
 #endif
+    }
 
 #ifdef DYNAMIC_BLADE_LENGTH
     if (!strcmp(cmd, "get_max_blade_length") && arg) {
