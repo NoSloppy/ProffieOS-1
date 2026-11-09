@@ -218,7 +218,7 @@ public:
     }
   }
 
-  void DrawBatteryBar(const Glyph& bar, float percent, int y = 0) {
+  void DrawBatteryBar(const Glyph& bar, float percent) {
     int start, end;
     if (bar.skip < bar.columns) {
       start = -bar.skip;
@@ -231,7 +231,7 @@ public:
     int pos = start;
     int bars = floorf(percent* (0.5 + max_bars) / 100);
     for (int i = 0; i < bars; i++) {
-      Draw(bar, pos, y);
+      Draw(bar, pos, 0);
       pos += bar.skip;
     }
   }
