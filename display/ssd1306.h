@@ -630,11 +630,8 @@ public:
   }
 
   // Config file hooks for custom heights like 64x48 OLEDs.
-  virtual int LineHeight() {
-    return 16;
-  }
   virtual void DrawScreenText(const char* message, int y, const Glyph* font) {
-    display_->DrawText(message, 0, y, font, LineHeight());
+    display_->DrawText(message, 0, y, font);
   }
   virtual void DrawScreenBatteryBar(const Glyph& bar, float percent) {
     display_->DrawBatteryBar(bar, percent);
