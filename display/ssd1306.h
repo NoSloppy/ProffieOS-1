@@ -388,9 +388,9 @@ public:
         // DrawText("==SabeR===", 0,15, Starjedi10pt7bGlyphs);
         // DrawText("++Teensy++",-4,31, Starjedi10pt7bGlyphs);
         if (WIDTH < 128) {
-          DrawScreenText("p-os", BootY(), Starjedi10pt7bGlyphs);
+          DrawScreenText("p-os", 15, Starjedi10pt7bGlyphs);
         } else {
-          DrawScreenText("proffieos", BootY(), Starjedi10pt7bGlyphs);
+          DrawScreenText("proffieos", 15, Starjedi10pt7bGlyphs);
         }
         DrawScreenText(version, 31, Starjedi10pt7bGlyphs);
         if (display_->HardwareHeight() > 32) {
@@ -448,7 +448,7 @@ public:
         const Glyph* font = Starjedi10pt7bGlyphs;
 #endif
         if (strchr(message_, '\n')) {
-          DrawScreenText(message_, MessageTwoLineY(), font);
+          DrawScreenText(message_, 15, font);
         } else {
         // centered
           DrawScreenText(message_, MessageY(), font);
@@ -635,12 +635,6 @@ public:
   }
   virtual int MessageY() {
     return display_->HardwareHeight() / 2 + 7;
-  }
-  virtual int MessageTwoLineY() {
-    return 15;
-  }
-  virtual int BootY() {
-    return 15;
   }
   virtual void DrawScreenText(const char* message, int y, const Glyph* font) {
     display_->DrawText(message, 0, y, font, LineHeight());
