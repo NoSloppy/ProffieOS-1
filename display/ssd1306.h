@@ -451,7 +451,7 @@ public:
           DrawScreenText(message_, 15, font);
         } else {
         // centered
-          DrawScreenText(message_, MessageY(), font);
+          DrawScreenText(message_, display_->HardwareHeight() / 2 + 7, font);
         }
         return 200;  // redraw once every 200 ms
       }
@@ -632,9 +632,6 @@ public:
   // Config file hooks for custom heights like 64x48 OLEDs.
   virtual int LineHeight() {
     return 16;
-  }
-  virtual int MessageY() {
-    return display_->HardwareHeight() / 2 + 7;
   }
   virtual void DrawScreenText(const char* message, int y, const Glyph* font) {
     display_->DrawText(message, 0, y, font, LineHeight());
