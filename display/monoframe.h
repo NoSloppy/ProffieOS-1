@@ -260,6 +260,29 @@ public:
       str++;
     }
   }
+
+  // Counts how many lines DrawText() will actually produce for this
+  // string, using the exact same newline/forced-wrap rules, so the
+  // count never gets out of sync with what gets drawn.
+  int CountLines(const char* str, const Glyph* font) {
+    int x = 0;
+    int lines = 1;
+    while (*str) {
+      if (*str == '\n') {
+        x = 0;
+        lines++;
+      } else if (*str >= 0x20 && *str <= 0x7f) {
+        int glyph_width = font[*str - 0x20].skip;
+        if (x > 0 && x + glyph_width > WIDTH) {
+          x = 0;
+          lines++;
+        }
+        x += glyph_width;
+      }
+      str++;
+    }
+    return lines;
+  }
 };
 
 #endif

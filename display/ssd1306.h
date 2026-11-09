@@ -447,11 +447,19 @@ public:
 #else
         const Glyph* font = Starjedi10pt7bGlyphs;
 #endif
-        if (strchr(message_, '\n')) {
-          display_->DrawText(message_, 0, 15, font);
-        } else {
-        // centered
-          display_->DrawText(message_, 0, display_->HardwareHeight() / 2 + 7, font);
+        {
+          int lines = display_->CountLines(message_, font);
+          if (lines <= 2) {
+            // 1 or 2 lines: center the whole block vertically, regardless
+            // of whether the lines came from a literal '\n' or from
+            // width-based wrapping.
+            int y = display_->HardwareHeight() / 2 + 7 - (lines - 1) * 8;
+            display_->DrawText(message_, 0, y, font);
+          } else {
+            // 3+ lines: top-justify. (Scrolling for overflow content is
+            // handled separately.)
+            display_->DrawText(message_, 0, 15, font);
+          }
         }
         return 200;  // redraw once every 200 ms
       }
