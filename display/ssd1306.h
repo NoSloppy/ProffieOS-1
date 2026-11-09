@@ -630,9 +630,6 @@ public:
   }
 
   // Config file hooks for custom heights like 64x48 OLEDs.
-  virtual int NumberOfTextLines() {
-    return 2;  // Default for standard displays
-  }
   virtual int LineHeight() {
     return 16;
   }
