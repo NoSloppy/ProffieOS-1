@@ -829,14 +829,14 @@ public:
     int blade = target_blade[BC_SECOND_BLADE] ? 1 : 0;
     SaberBase::OffType off_type = isPointingUp(blade) ?
         SaberBase::OFF_FAST : SaberBase::OFF_NORMAL;
-    if ((SaberBase::OnBlades() & ~target_blade).off()) {
-      Off(off_type, EffectLocation(0, target_blade));
+    if ((SaberBase::OnBlades() & ~target_blade & controlled_blades_).off()) {
+      Off(off_type);
     } else {
       SaberBase::TurnOff(off_type, EffectLocation(0, target_blade));
     }
     ResetBladeState(blade);
     saber_off_time_ = millis();
-    if (SaberBase::OnBlades().off()) {
+    if ((SaberBase::OnBlades() & controlled_blades_).off()) {
       ResetBladeState(0);
       ResetBladeState(1);
       if (unmute_on_deactivation_) {
