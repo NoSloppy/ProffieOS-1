@@ -1,4 +1,7 @@
 /*
+11-13 BC fix 
+    - both blades off
+    - move off to 1st savved clock, move blaster block to aux
 saber_BC_4buttons.h
   http://fredrik.hubbe.net/lightsaber/proffieos.html
   Copyright (c) 2016-2019 Fredrik Hubinette
@@ -136,7 +139,7 @@ Next Preset Fast          - Hold POW1 and Twist (NOT pointing UP or DOWN).
 Previous Preset Fast      - Hold POW1 and Twist (while pointing DOWN).
 First Preset Fast         - Hold POW1 and Twist (while pointing UP).
 Clash                     - No button, just hit the blade against something.
-Blaster Deflection        - Click or Double Click POW1.
+Blaster Deflection        - Click or Double Click AUX1.
 Spam Blaster Blocks       - 4x Click and Hold POW1 (while pointing DOWN).
 Toggle Battle Mode        - Double Click and Hold POW1, release after a second
                             (while pointing UP).
@@ -165,28 +168,28 @@ Turn OFF bypass postoff   - Turn OFF (while pointing UP).
 ---------------------------------------
 --------- When blade is OFF ---------
 1 click POW1             - turn main blade ON
-                          turn main blade ON bypass preon (pointing up)
+                           turn main blade ON bypass preon (pointing up)
 1 click POW1 long        - next preset
-                          previous preset (pointing down)
-                          first preset (pointing up)
+                           previous preset (pointing down)
+                           first preset (pointing up)
 1 click POW1 held        - scroll presets
-    then twist          - turn main blade ON muted
-    then clash          - enter BC volume menu
-    then rotate left    - user effect 5
-    then rotate right   - user effect 6
+      then twist         - turn main blade ON muted
+      then clash         - enter BC volume menu
+      then rotate left   - user effect 5
+      then rotate right  - user effect 6
 2 clicks POW1            - turn main blade ON muted
 2 clicks held            - blade length edit, or OS system menu instead
 3 clicks POW1            - quote
-                          toggle sequential or random quotes (pointing down)
-3 clicks long           - on-demand battery level
-3 clicks held           - spoken battery level in percentage
-                          spoken battery level in volts (pointing down)
+                           toggle sequential or random quotes (pointing down)
+3 clicks long            - on-demand battery level
+3 clicks held            - spoken battery level in percentage
+                           spoken battery level in volts (pointing down)
 4 clicks POW1            - play / stop track
-4 clicks long           - manually trigger blade ID scan
-4 clicks held           - manually switch to next blade array
+4 clicks long            - manually trigger blade ID scan
+4 clicks held            - manually switch to next blade array
 
 --------- When blade is ON ---------
-1 click POW1             - blaster deflection
+1 click POW1            - turn main blade OFF
 1 click POW1 held       - turn main blade OFF
     then twist          - first preset fast
                           next preset fast
@@ -194,21 +197,20 @@ Turn OFF bypass postoff   - Turn OFF (while pointing UP).
     then clash          - lockup
     then rotate left    - user effect 1
     then rotate right   - user effect 2
-1 click AUX1             - blaster deflection
+1 click AUX1            - blaster deflection
 1 click AUX1 held       - lockup
     then rotate left    - user effect 3
     then rotate right   - user effect 4
-2 clicks POW1            - blaster deflection
-2 clicks POW1 long       - force (not pointing up)
-                          - toggle battle mode (pointing up)
-2 clicks AUX1            - blaster deflection
-3 clicks POW1            - quote
+2 clicks POW1 long      - force (not pointing up)
+                        - toggle battle mode (pointing up)
+2 clicks AUX1           - blaster deflection
+3 clicks POW1           - quote
                           toggle sequential or random quotes (pointing down)
-3 clicks POW1 long       - revert colorchange to config
-3 clicks POW1 held       - color change mode
-4 clicks POW1 held       - toggle spam blasts (pointing down)
-hold POW1 + click AUX1   - lightning block
-hold AUX1 + twist        - dim (pointing up)
+3 clicks POW1 long      - revert colorchange to config
+3 clicks POW1 held      - color change mode
+4 clicks POW1 held      - toggle spam blasts (pointing down)
+hold POW1 + click AUX1  - lightning block
+hold AUX1 + twist       - dim (pointing up)
 
 ====================== SECOND BLADE (POW2 / AUX2) ======================
 | Sorted by ON or OFF state: (what it's like while using saber) |
@@ -248,7 +250,7 @@ Turn OFF blade            - Hold POW2 until off -or- Twist if using BC_TWIST_OFF
 Turn OFF bypass postoff   - Turn OFF (while pointing UP for the second blade).
 
 -------- When blade is ON -------
-Blaster Deflection        - Click or Double Click POW2.
+Blaster Deflection        - Click or Double Click AUX2.
 Spam Blaster Blocks       - 4x Click and Hold POW2 (while pointing DOWN for the second blade).
 Toggle Battle Mode        - Double Click and Hold POW2, release after a second
                             (while pointing UP for the second blade).
@@ -275,37 +277,36 @@ Turn OFF bypass postoff   - Turn OFF (while pointing UP for the second blade).
      SECOND blade summary by clicks
 ---------------------------------------
 --------- When blade is OFF ---------
-1 click POW2             - turn second blade ON
-1 click POW2 long        - preset actions only if global controls are enabled
-1 click POW2 held        - scroll presets only if global controls are enabled
-2 clicks POW2            - turn second blade ON muted
-3 clicks POW2            - quote only if global controls are enabled
-4 clicks POW2 long       - none
-4 clicks POW2 held       - none
-hold POW2 then twist     - turn second blade ON muted
-hold POW2 then clash     - enter lockup / drag
+1 click POW2              - turn second blade ON
+1 click POW2 long         - preset actions only if global controls are enabled
+1 click POW2 held         - scroll presets only if global controls are enabled
+2 clicks POW2             - turn second blade ON muted
+3 clicks POW2             - quote only if global controls are enabled
+4 clicks POW2 long        - none
+4 clicks POW2 held        - none
+hold POW2 then twist      - turn second blade ON muted
+hold POW2 then clash       - enter lockup / drag
 hold POW2 then click AUX2 - lightning block
 
 --------- When blade is ON ---------
-1 click POW2             - blaster deflection
-1 click POW2 held       - turn second blade OFF
-    then twist          - first preset fast / next preset fast / previous preset fast
-    then clash          - lockup
-    then rotate left    - user effect 1
-    then rotate right   - user effect 2
-1 click AUX2             - blaster deflection
-1 click AUX2 held       - lockup
-    then rotate left    - user effect 3
-    then rotate right   - user effect 4
-2 clicks POW2            - blaster deflection
-2 clicks POW2 long       - force (not pointing up)
+1 click POW2              - turn second blade OFF
+1 click POW2 held         - turn second blade OFF
+    then twist            - first preset fast / next preset fast / previous preset fast
+    then clash            - lockup
+    then rotate left      - user effect 1
+    then rotate right     - user effect 2
+1 click AUX2              - blaster deflection
+1 click AUX2 held         - lockup
+      then rotate left    - user effect 3
+      then rotate right   - user effect 4
+2 clicks POW2 long        - force (not pointing up)
                           - toggle battle mode (pointing up)
-3 clicks POW2            - quote only if global controls are enabled
-3 clicks POW2 long       - revert colorchange only if global controls are enabled
-3 clicks POW2 held       - color change only if global controls are enabled
-4 clicks POW2 held       - spam blast
-hold POW2 + click AUX2   - lightning block
-hold AUX2 + twist        - dim (pointing up)
+3 clicks POW2             - quote only if global controls are enabled
+3 clicks POW2 long        - revert colorchange only if global controls are enabled
+3 clicks POW2 held        - color change only if global controls are enabled
+4 clicks POW2 held        - spam blast
+hold POW2 + click AUX2    - lightning block
+hold AUX2 + twist         - dim (pointing up)
 */
 
 
@@ -1163,14 +1164,11 @@ public:
       case EVENTID(BUTTON_POWER, EVENT_FIRST_SAVED_CLICK_SHORT, MODE_OFF):
       case EVENTID(BUTTON_POWER, EVENT_FIRST_SAVED_CLICK_SHORT, MODE_ON):
         if (!BladeIsOn(blade)) TurnBladeOn(BladeSetFor(blade));
-        else DoBlasterBlock(BladeSetFor(blade));
+        else TurnBladeOff(BladeSetFor(blade));
         return true;
 
       case EVENTID(BUTTON_POWER, EVENT_SECOND_SAVED_CLICK_SHORT, MODE_OFF):
         StartMutedIgnition(blade);
-        return true;
-      case EVENTID(BUTTON_POWER, EVENT_SECOND_SAVED_CLICK_SHORT, MODE_ON):
-        DoBlasterBlock(BladeSetFor(blade));
         return true;
 
       case EVENTID(BUTTON_POWER, EVENT_FIRST_HELD_MEDIUM, MODE_ON):
