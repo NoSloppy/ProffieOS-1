@@ -190,13 +190,12 @@ Turn OFF bypass postoff   - Turn OFF (while pointing UP).
 
 --------- When blade is ON ---------
 1 click POW1            - turn main blade OFF
-1 click POW1 held       - turn main blade OFF
-    then twist          - first preset fast
+hold POW1 then twist    - first preset fast
                           next preset fast
                           previous preset fast (pointing down)
-    then clash          - lockup
-    then rotate left    - user effect 1
-    then rotate right   - user effect 2
+hold POW1 then clash    - lockup
+hold POW1 then rotate left  - user effect 1
+hold POW1 then rotate right - user effect 2
 1 click AUX1            - blaster deflection
 1 click AUX1 held       - lockup
     then rotate left    - user effect 3
@@ -290,11 +289,11 @@ hold POW2 then click AUX2 - lightning block
 
 --------- When blade is ON ---------
 1 click POW2              - turn second blade OFF
-1 click POW2 held         - turn second blade OFF
-    then twist            - first preset fast / next preset fast / previous preset fast
-    then clash            - lockup
-    then rotate left      - user effect 1
-    then rotate right     - user effect 2
+hold POW2 then twist      - first preset fast / next preset fast /
+                            previous preset fast (pointing down)
+hold POW2 then clash      - lockup
+hold POW2 then rotate left  - user effect 1
+hold POW2 then rotate right - user effect 2
 1 click AUX2              - blaster deflection
 1 click AUX2 held         - lockup
       then rotate left    - user effect 3
@@ -1169,10 +1168,6 @@ public:
 
       case EVENTID(BUTTON_POWER, EVENT_SECOND_SAVED_CLICK_SHORT, MODE_OFF):
         StartMutedIgnition(blade);
-        return true;
-
-      case EVENTID(BUTTON_POWER, EVENT_FIRST_HELD_MEDIUM, MODE_ON):
-        if (BladeIsOn(blade)) TurnBladeOff(BladeSetFor(blade));
         return true;
 
       case EVENTID(BUTTON_POWER, EVENT_FIRST_CLICK_LONG, MODE_OFF):
