@@ -130,7 +130,7 @@ Trigger Blade ID Scan     - 4x Click POW1 and Hold, release after one second.
 Next Blade Array          - 4x Click POW1 and Hold.
 User Effect 5             - Hold POW1 then Rotate Left 60 degrees.
 User Effect 6             - Hold POW1 then Rotate Right 60 degrees.
-Turn OFF blade            - Hold POW1 until off -or- Twist if using BC_TWIST_OFF.
+Turn OFF blade            - Short Click POW1 -or- Twist if using BC_TWIST_OFF.
 Turn OFF bypass postoff   - Turn OFF (while pointing UP).
 
 -------- When blade is ON -------
@@ -160,7 +160,7 @@ User Effect 1             - Hold POW1 then Rotate Left 60 degrees.
 User Effect 2             - Hold POW1 then Rotate Right 60 degrees.
 User Effect 3             - Hold AUX1 then Rotate Left 60 degrees.
 User Effect 4             - Hold AUX1 then Rotate Right 60 degrees.
-Turn OFF blade            - Hold POW1 until off -or- Twist if using BC_TWIST_OFF.
+Turn OFF blade            - Short Click POW1 -or- Twist if using BC_TWIST_OFF.
 Turn OFF bypass postoff   - Turn OFF (while pointing UP).
 
 ---------------------------------------
@@ -245,7 +245,7 @@ Next Blade Array          - Same as main pair only if BC4_GLOBAL_FROM_BOTH_GROUP
                             is defined; otherwise ignored.
 User Effect 5             - Hold POW2 then Rotate Left 60 degrees.
 User Effect 6             - Hold POW2 then Rotate Right 60 degrees.
-Turn OFF blade            - Hold POW2 until off -or- Twist if using BC_TWIST_OFF.
+Turn OFF blade            - Short Click POW2 -or- Twist if using BC_TWIST_OFF.
 Turn OFF bypass postoff   - Turn OFF (while pointing UP for the second blade).
 
 -------- When blade is ON -------
@@ -269,7 +269,7 @@ User Effect 1             - Hold POW2 then Rotate Left 60 degrees.
 User Effect 2             - Hold POW2 then Rotate Right 60 degrees.
 User Effect 3             - Hold AUX2 then Rotate Left 60 degrees.
 User Effect 4             - Hold AUX2 then Rotate Right 60 degrees.
-Turn OFF blade            - Hold POW2 until off -or- Twist if using BC_TWIST_OFF.
+Turn OFF blade            - Short Click POW2 -or- Twist if using BC_TWIST_OFF.
 Turn OFF bypass postoff   - Turn OFF (while pointing UP for the second blade).
 
 ---------------------------------------
