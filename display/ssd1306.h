@@ -88,6 +88,10 @@ enum Screen {
 template<int Width, class col_t>
 class Display : public MonoFrame<Width, col_t> {
 public:
+  virtual int HardwareHeight() {
+    return sizeof(col_t) * 8;
+  }
+
   virtual void Page() = 0;
   virtual void SB_Top() = 0;
   virtual Screen GetScreen() = 0;
@@ -379,28 +383,36 @@ public:
         Clear();
         return 3600000; // Long time!
 
-      case SCREEN_STARTUP:
+      case SCREEN_STARTUP: {
         Clear();
         // DrawText("==SabeR===", 0,15, Starjedi10pt7bGlyphs);
         // DrawText("++Teensy++",-4,31, Starjedi10pt7bGlyphs);
         if (WIDTH < 128) {
-          display_->DrawText("p-os", 0,15, Starjedi10pt7bGlyphs);
+          // Allow for custom scaling
+          DrawScreenText("p-os", BootY(), Starjedi10pt7bGlyphs);
         } else {
-          display_->DrawText("proffieos", 0,15, Starjedi10pt7bGlyphs);
+          DrawScreenText("proffieos", BootY(), Starjedi10pt7bGlyphs);
         }
-        display_->DrawText(version,0,31, Starjedi10pt7bGlyphs);
-        if (HEIGHT > 32) {
-          display_->DrawText("installed: ",0,47, Starjedi10pt7bGlyphs);
-          display_->DrawText(install_time,0,63, Starjedi10pt7bGlyphs);
+        DrawScreenText(version, 31, Starjedi10pt7bGlyphs);
+        if (display_->HardwareHeight() > 32) {
+          DrawScreenText("installed: ", 47, Starjedi10pt7bGlyphs);
+          DrawScreenText(install_time, 63, Starjedi10pt7bGlyphs);
         }
         next_screen_ = SCREEN_DEFAULT;
+        // Calculate duration with extra time for scrolling boot text if needed
+        uint32_t boot_duration;
         if (font_config.ProffieOSTextMessageDuration != -1) {
-          return font_config.ProffieOSTextMessageDuration;
+          boot_duration = font_config.ProffieOSTextMessageDuration;
         } else if (font_config.ProffieOSFontImageDuration > 0) {
-          return font_config.ProffieOSFontImageDuration;
+          boot_duration = font_config.ProffieOSFontImageDuration;
         } else {
-          return 3500;
+          boot_duration = 3500;
         }
+        // Add extra time if boot text exceeds screen height
+        int boot_lines = NumberOfTextLines();
+        if (boot_lines > 3) boot_duration += (boot_lines - 3) * 2000;
+        return boot_duration;
+      }
 
       case SCREEN_PLI:
         if (!SaberBase::IsOn() && t_ >= PLI_OFF_TIME) {
@@ -409,20 +421,20 @@ public:
           return FillFrameBuffer2(advance);
         }
         Clear();
-        display_->DrawBatteryBar(BatteryBar16, battery_monitor.battery_percent());
-        if (HEIGHT > 32) {
+        DrawScreenBatteryBar(BatteryBar16, battery_monitor.battery_percent());
+        if (ShowVoltage()) {
           char tmp[32];
           strcpy(tmp, "volts x.xx");
           float v = battery_monitor.battery();
           tmp[6] = '0' + (int)floorf(v);
           tmp[8] = '0' + ((int)floorf(v * 10)) % 10;
           tmp[9] = '0' + ((int)floorf(v * 100)) % 10;
-          display_->DrawText(tmp,0,55, Starjedi10pt7bGlyphs);
+          DrawScreenText(tmp, 55, Starjedi10pt7bGlyphs);
         }
         return 200;  // redraw once every 200 ms
 
       case SCREEN_ERROR_MESSAGE:
-      case SCREEN_MESSAGE: {
+ case SCREEN_MESSAGE: {
         uint32_t t;
         if (font_config.ProffieOSTextMessageDuration != -1) {
           t = font_config.ProffieOSTextMessageDuration;
@@ -431,23 +443,53 @@ public:
         } else {
           t = 3500;
         }
+        
+        // Add extra time for scrolling if text has many lines
+        if (message_line_count_ > 2) {
+          t += (message_line_count_ - 2) * 1000;
+        }
+        
         if (t_ >= t) {
           screen_ = SCREEN_DEFAULT;
           ShowDefault();
           return FillFrameBuffer2(advance);
         }
         Clear();
-        // Aurebesh Font option.
-#ifdef USE_AUREBESH_FONT
+      #ifdef USE_AUREBESH_FONT
         const Glyph* font = Aurebesh10pt7bGlyphs;
-#else
+      #else
         const Glyph* font = Starjedi10pt7bGlyphs;
-#endif
-        if (strchr(message_, '\n')) {
-          display_->DrawText(message_, 0, 15, font);
+      #endif
+
+        if (message_line_count_ == 1) {
+          // Single line: centered
+          DrawScreenText(message_, MessageY(), font);
+        } else if (message_line_count_ == 2) {
+          DrawScreenText(message_, MessageTwoLineY(), font);
         } else {
-        // centered
-          display_->DrawText(message_, 0, HEIGHT / 2 + 7, font);
+          // Three or more: begin in the normal two-line position,
+          // pause for one second, then smoothly scroll upward.
+          uint32_t elapsed = millis() - message_start_time_;
+          int scroll_pixels = 0;
+
+          if (elapsed > 1000) {
+            scroll_pixels = (elapsed - 1000) / 50;
+
+            // Move enough for every line after the first two to enter view.
+            int max_scroll_pixels =
+                (message_line_count_ - 2) * LineHeight();
+
+            if (scroll_pixels > max_scroll_pixels) {
+              scroll_pixels = max_scroll_pixels;
+            }
+          }
+
+          // Keep drawing the entire message. Do NOT skip completed lines:
+          // that is what caused the visible reposition/jump at line boundaries.
+          DrawScreenText(
+              message_,
+              MessageTwoLineY() - scroll_pixels,
+              font);
         }
         return 200;  // redraw once every 200 ms
       }
@@ -631,6 +673,41 @@ public:
     strncpy(message_, text, sizeof(message_));
     message_[sizeof(message_)-1] = 0;
     screen_ = SCREEN_MESSAGE;
+    
+    // Count lines
+    message_line_count_ = 1;
+    for (int i = 0; text[i]; i++) {
+      if (text[i] == '\n') message_line_count_++;
+    }
+    message_start_time_ = millis();
+  }
+
+  // Config file hooks for custom heights like 64x48 OLEDs.
+  virtual int NumberOfTextLines() {
+    return 2;  // Default for standard displays
+  }
+  virtual int MessageY() {
+    return display_->HardwareHeight() / 2 +
+           (int)(7.0f * LineHeight() / 16.0f + 0.5f);
+  }
+  virtual int MessageTwoLineY() {
+    return LineHeight();
+  }
+  virtual int LineHeight() {
+    return display_->HardwareHeight() / NumberOfTextLines();
+  }
+  virtual void DrawScreenText(const char* message, int y, const Glyph* font) {
+    float scale = (float)LineHeight() / 16.0f;  // Scale to fit LineHeight
+    display_->DrawText(message, 0, y, font, scale, LineHeight());
+  }
+  virtual void DrawScreenBatteryBar(const Glyph& bar, float percent) {
+    display_->DrawBatteryBar(bar, percent);
+  }
+  virtual int BootY() {
+    return 15;
+  }
+  virtual bool ShowVoltage() {
+    return display_->HardwareHeight() > 32;
   }
 
   // Calls SetScreenNow already.
@@ -889,7 +966,24 @@ public:
   bool Parse(const char* cmd, const char* e) override {
     if (!strcmp(cmd, "setmessage") && e) {
       STDOUT << "Setting message: " << e << "\n";
-      SetMessage(e);
+
+      // Make newlines work
+      char buf[sizeof(message_)];
+      size_t len = strlen(e);
+      if (len >= sizeof(buf)) len = sizeof(buf) - 1;
+
+      char* out = buf;
+      for (size_t i = 0; i < len; i++) {
+        if (e[i] == '\\' && e[i + 1] == 'n') {
+          *out++ = '\n';
+          i++;  // skip the 'n'
+        } else {
+          *out++ = e[i];
+        }
+      }
+      *out = 0;
+
+      SetMessage(buf);
       SetScreenNow(SCREEN_MESSAGE);
       return true;
     }
@@ -898,6 +992,9 @@ public:
 #endif
 
 private:
+  // Have text scroll if longer than screen height
+  uint32_t message_start_time_ = 0;
+  int message_line_count_ = 0;
   // Variables related to frame buffer layout.
   uint8_t xor_ = 0;
   bool invert_y_ = 0;
@@ -936,6 +1033,10 @@ template<int WIDTH, class col_t, class POWER_PIN = PowerPINS<> >
 class SSD1306Template : public Display<WIDTH, col_t>, I2CDevice, Looper, StateMachine {
 public:
   static const int HEIGHT = sizeof(col_t) * 8;
+// Hook for custom heights like 64x48 OLEDs.
+  virtual int HardwareHeight() {
+    return HEIGHT;
+  }
   const char* name() override { return "SSD1306"; }
 
   enum Commands {
@@ -1048,7 +1149,7 @@ public:
       Send(0x80);                          // the suggested ratio 0x80
 
       Send(SETMULTIPLEX);                  // 0xA8
-      Send(HEIGHT - 1);
+      Send(HardwareHeight() - 1);
 
       Send(SETDISPLAYOFFSET);              // 0xD3
       Send(0x0);                                   // no offset
