@@ -170,7 +170,6 @@ BlasterMode blaster_mode = BLASTER_DEFAULT_MODE;
     auto_firing_ = true;
     SaberBase::SetLockup(LOCKUP_AUTOFIRE);
     SaberBase::DoBeginLockup();
-    current_alternative = auto_player_->length() * 1000;
   }
 
   void Fire() {
@@ -210,7 +209,10 @@ BlasterMode blaster_mode = BLASTER_DEFAULT_MODE;
 
   void Loop() override {
     Blaster::Loop();
-
+    if (auto_firing_ && !auto_player_) {
+      auto_player_ = GetWavPlayerPlaying(&SFX_auto);
+      if (auto_player_) current_alternative = auto_player_->length() * 1000;
+    }
     if (track_player_ && !track_player_->isPlaying()) {
       PVLOG_NORMAL << "** Track ended\n";
       track_player_.Free();
