@@ -73,6 +73,24 @@ mode.wav        Fallback sound used when switching mode if none of the 3 above e
 
 #include "blaster.h"
 
+// Usage: AutoLenF
+// return value: INTEGER - length in ms of the auto.wav currently playing, 0 otherwise.
+// Use in blade styles to sync timing to auto.wav, e.g. TrDelayX<AutoLenF>.
+// (Don't use current_alternative/AltF for this, it selects altXXX font directories.)
+int auto_sound_length_ms = 0;
+
+class AutoLenSVF {
+ public:
+  void run(BladeBase* blade) {}
+  int calculate(BladeBase* blade) { return auto_sound_length_ms; }
+  int getInteger(int led) { return auto_sound_length_ms; }
+};
+
+template<> class SingleValueAdapter<AutoLenSVF> : public AutoLenSVF {};
+template<> class SVFWrapper<AutoLenSVF> : public AutoLenSVF {};
+
+using AutoLenF = SingleValueAdapter<AutoLenSVF>;
+
 #ifdef PROP_TYPE
 #undef PROP_TYPE
 #endif
@@ -211,7 +229,7 @@ BlasterMode blaster_mode = BLASTER_DEFAULT_MODE;
     Blaster::Loop();
     if (auto_firing_ && !auto_player_) {
       auto_player_ = GetWavPlayerPlaying(&SFX_auto);
-      if (auto_player_) current_alternative = auto_player_->length() * 1000;
+      if (auto_player_) auto_sound_length_ms = auto_player_->length() * 1000;
     }
     if (track_player_ && !track_player_->isPlaying()) {
       PVLOG_NORMAL << "** Track ended\n";
@@ -325,7 +343,7 @@ BlasterMode blaster_mode = BLASTER_DEFAULT_MODE;
             SaberBase::SetLockup(SaberBase::LOCKUP_NONE);
             auto_firing_ = false;
             auto_player_.Free();
-            ResetCurrentAlternative();
+            auto_sound_length_ms = 0;
           }
         }
         return true;
